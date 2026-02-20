@@ -1,57 +1,119 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppStore } from '@/stores/app-store';
-import { api } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
+
+type AuthMode = 'signin' | 'signup';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [message, setMessage] = useState('');
+  const [mode, setMode] = useState<AuthMode>('signin');
+  const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
   const router = useRouter();
-  const { setToken, setUser } = useAppStore();
 
-  // Check API status
-  useEffect(() => {
-    const checkApi = async () => {
-      const isOnline = await api.checkHealth();
-      setApiStatus(isOnline ? 'online' : 'offline');
-    };
-    checkApi();
-    const interval = setInterval(checkApi, 30000);
-    return () => clearInterval(interval);
+  const supabase = useMemo(() => {
+    try {
+      return createClient();
+    } catch {
+      return null;
+    }
   }, []);
+
+  // Check Supabase connection status
+  useEffect(() => {
+    if (!supabase) return;
+
+    const checkConnection = async () => {
+      try {
+        const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+        setDbStatus(error ? 'offline' : 'online');
+      } catch {
+        setDbStatus('offline');
+      }
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000);
+    return () => clearInterval(interval);
+  }, [supabase]);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    if (!supabase) return;
+
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        router.push('/dashboard');
+      }
+    };
+    checkUser();
+  }, [supabase, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!supabase) {
+      setError('Supabase is not configured. Please set environment variables.');
+      return;
+    }
+
     setLoading(true);
     setError('');
+    setMessage('');
 
     try {
-      const response = await api.login(email, password);
-      setToken(response.token);
-      setUser({
-        id: response.user.site_id,
-        email: response.user.email,
-        name: response.user.name,
-        site_id: response.user.site_id,
-        created_at: new Date().toISOString(),
-      });
-      router.push('/dashboard');
+      if (mode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          },
+        });
+        if (error) throw error;
+        setMessage('Check your email for the confirmation link!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
+        router.push('/dashboard');
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setLoading(false);
     }
   };
 
-  const showOAuthMessage = () => {
-    alert('OAuth integration coming soon!');
+  const handleOAuth = async (provider: 'google' | 'azure' | 'apple') => {
+    if (!supabase) {
+      setError('Supabase is not configured. Please set environment variables.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'OAuth failed');
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,11 +125,11 @@ export default function LoginPage() {
           <span>orca</span>
         </div>
         <div className="login-api-status">
-          <div className={`status-dot ${apiStatus === 'online' ? 'green' : apiStatus === 'offline' ? 'red' : 'gray'}`} />
+          <div className={`status-dot ${dbStatus === 'online' ? 'green' : dbStatus === 'offline' ? 'red' : 'gray'}`} />
           <span>
-            {apiStatus === 'online' && 'API Online'}
-            {apiStatus === 'offline' && 'API Offline'}
-            {apiStatus === 'checking' && 'Checking...'}
+            {dbStatus === 'online' && 'Connected'}
+            {dbStatus === 'offline' && 'Offline'}
+            {dbStatus === 'checking' && 'Checking...'}
           </span>
         </div>
       </div>
@@ -82,9 +144,12 @@ export default function LoginPage() {
           {error && (
             <div className="login-error">{error}</div>
           )}
+          {message && (
+            <div className="login-message">{message}</div>
+          )}
 
           {/* OAuth Buttons */}
-          <button type="button" className="oauth-btn" onClick={showOAuthMessage}>
+          <button type="button" className="oauth-btn" onClick={() => handleOAuth('google')} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -94,7 +159,7 @@ export default function LoginPage() {
             Continue with Google
           </button>
 
-          <button type="button" className="oauth-btn" onClick={showOAuthMessage}>
+          <button type="button" className="oauth-btn" onClick={() => handleOAuth('azure')} disabled={loading}>
             <svg viewBox="0 0 23 23" width="18" height="18">
               <path fill="#f35325" d="M1 1h10v10H1z"/>
               <path fill="#81bc06" d="M12 1h10v10H12z"/>
@@ -104,7 +169,7 @@ export default function LoginPage() {
             Continue with Microsoft
           </button>
 
-          <button type="button" className="oauth-btn" onClick={showOAuthMessage}>
+          <button type="button" className="oauth-btn" onClick={() => handleOAuth('apple')} disabled={loading}>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="#000">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
             </svg>
@@ -122,6 +187,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email address"
                 required
+                disabled={loading}
               />
             </div>
             <div className="form-group">
@@ -131,12 +197,28 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 required
+                minLength={6}
+                disabled={loading}
               />
             </div>
             <button type="submit" className="login-btn" disabled={loading}>
-              {loading ? 'Loading...' : 'Continue'}
+              {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Sign Up'}
             </button>
           </form>
+
+          <div className="auth-toggle">
+            {mode === 'signin' ? (
+              <span>
+                Don&apos;t have an account?{' '}
+                <button type="button" onClick={() => setMode('signup')}>Sign up</button>
+              </span>
+            ) : (
+              <span>
+                Already have an account?{' '}
+                <button type="button" onClick={() => setMode('signin')}>Sign in</button>
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -238,6 +320,14 @@ export default function LoginPage() {
           font-size: 14px;
           margin-bottom: 16px;
         }
+        .login-message {
+          background: #dcfce7;
+          color: #166534;
+          padding: 12px;
+          border-radius: 10px;
+          font-size: 14px;
+          margin-bottom: 16px;
+        }
         .oauth-btn {
           width: 100%;
           display: flex;
@@ -255,9 +345,13 @@ export default function LoginPage() {
           transition: all 0.2s;
           margin-bottom: 10px;
         }
-        .oauth-btn:hover {
+        .oauth-btn:hover:not(:disabled) {
           background: #f9fafb;
           border-color: #d1d5db;
+        }
+        .oauth-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
         .divider {
           display: flex;
@@ -294,6 +388,10 @@ export default function LoginPage() {
         .form-group input::placeholder {
           color: #9ca3af;
         }
+        .form-group input:disabled {
+          background: #f3f4f6;
+          cursor: not-allowed;
+        }
         .login-btn {
           width: 100%;
           padding: 12px 20px;
@@ -307,12 +405,29 @@ export default function LoginPage() {
           transition: background 0.2s;
           margin-top: 4px;
         }
-        .login-btn:hover {
+        .login-btn:hover:not(:disabled) {
           background: #4b5563;
         }
         .login-btn:disabled {
           background: #9ca3af;
           cursor: not-allowed;
+        }
+        .auth-toggle {
+          text-align: center;
+          margin-top: 16px;
+          font-size: 14px;
+          color: #6b7280;
+        }
+        .auth-toggle button {
+          background: none;
+          border: none;
+          color: #111;
+          font-weight: 500;
+          cursor: pointer;
+          text-decoration: underline;
+        }
+        .auth-toggle button:hover {
+          color: #4b5563;
         }
         .login-footer {
           flex-shrink: 0;
