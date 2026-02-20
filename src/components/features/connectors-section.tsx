@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
-import { Search, Link2, Loader2 } from 'lucide-react';
+import { Search, Link2, Loader2, Unlink, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { OAUTH_PROVIDERS, type OAuthProvider } from '@/lib/integrations/providers';
 
 const categories = ['All', 'Productivity', 'Communication', 'Project Management', 'Developer Tools', 'CRM & Sales'];
@@ -14,8 +15,12 @@ const categories = ['All', 'Productivity', 'Communication', 'Project Management'
 export function ConnectorsSection() {
   const [connectedIds, setConnectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const searchParams = useSearchParams();
 
   const supabase = useMemo(() => {
     try {
@@ -25,36 +30,56 @@ export function ConnectorsSection() {
     }
   }, []);
 
-  // Load connected integrations from Supabase
+  // Handle OAuth callback notifications
   useEffect(() => {
-    const loadConnections = async () => {
-      if (!supabase) {
+    const oauthSuccess = searchParams.get('oauth_success');
+    const oauthError = searchParams.get('oauth_error');
+
+    if (oauthSuccess) {
+      setNotification({ type: 'success', message: `Successfully connected to ${oauthSuccess}!` });
+      // Reload connections
+      loadConnections();
+    } else if (oauthError) {
+      setNotification({ type: 'error', message: `Failed to connect: ${oauthError}` });
+    }
+
+    // Clear notification after 5 seconds
+    if (oauthSuccess || oauthError) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
+  const loadConnections = async () => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         setLoading(false);
         return;
       }
 
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+      const { data: integrations } = await supabase
+        .from('integrations')
+        .select('provider')
+        .eq('user_id', user.id)
+        .eq('status', 'connected');
 
-        const { data: integrations } = await supabase
-          .from('integrations')
-          .select('provider')
-          .eq('user_id', user.id)
-          .eq('status', 'connected');
+      const providers = (integrations as { provider: string }[] | null)?.map(i => i.provider) || [];
+      setConnectedIds(providers);
+    } catch (err) {
+      console.error('Failed to load integrations:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        const providers = (integrations as { provider: string }[] | null)?.map(i => i.provider) || [];
-        setConnectedIds(providers);
-      } catch (err) {
-        console.error('Failed to load integrations:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
+  // Load connected integrations from Supabase
+  useEffect(() => {
     loadConnections();
   }, [supabase]);
 
@@ -68,9 +93,58 @@ export function ConnectorsSection() {
   const connectedProviders = filteredProviders.filter((p) => connectedIds.includes(p.providerId));
   const availableProviders = filteredProviders.filter((p) => !connectedIds.includes(p.providerId));
 
-  const handleConnect = (provider: OAuthProvider) => {
-    // TODO: Implement OAuth flow in Phase 4
-    alert(`OAuth flow for ${provider.displayName} coming soon!`);
+  const handleConnect = async (provider: OAuthProvider) => {
+    setConnectingId(provider.providerId);
+    try {
+      const response = await fetch(`/api/integrations/oauth/${provider.providerId}/authorize`);
+      const data = await response.json();
+
+      if (data.error) {
+        setNotification({ type: 'error', message: data.error });
+        return;
+      }
+
+      if (data.authorization_url) {
+        // Redirect to OAuth provider
+        window.location.href = data.authorization_url;
+      }
+    } catch (err) {
+      console.error('Failed to initiate OAuth:', err);
+      setNotification({ type: 'error', message: 'Failed to start authentication' });
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  const handleDisconnect = async (providerId: string) => {
+    setConnectingId(providerId);
+    try {
+      const client = createClient();
+      const { data: { user } } = await client.auth.getUser();
+      if (!user) return;
+
+      // Work around Supabase type inference issue
+      const integrationsTable = client.from('integrations');
+      const { error } = await (integrationsTable as unknown as {
+        update: (data: { status: string }) => {
+          eq: (col: string, val: string) => {
+            eq: (col: string, val: string) => Promise<{ error: Error | null }>;
+          };
+        };
+      }).update({ status: 'disconnected' })
+        .eq('user_id', user.id)
+        .eq('provider', providerId);
+
+      if (error) throw error;
+
+      setConnectedIds(prev => prev.filter(id => id !== providerId));
+      setNotification({ type: 'success', message: 'Disconnected successfully' });
+    } catch (err) {
+      console.error('Failed to disconnect:', err);
+      setNotification({ type: 'error', message: 'Failed to disconnect' });
+    } finally {
+      setConnectingId(null);
+    }
   };
 
   return (
@@ -81,6 +155,20 @@ export function ConnectorsSection() {
           Connect your favorite apps to automatically sync data.
         </p>
       </div>
+
+      {/* Notification */}
+      {notification && (
+        <div className={`mb-6 p-4 rounded-lg flex items-center gap-3 ${
+          notification.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+        }`}>
+          {notification.type === 'success' ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <XCircle className="w-5 h-5" />
+          )}
+          <span>{notification.message}</span>
+        </div>
+      )}
 
       {/* Search and Filter */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -123,7 +211,9 @@ export function ConnectorsSection() {
                     key={provider.providerId}
                     provider={provider}
                     connected={true}
+                    loading={connectingId === provider.providerId}
                     onConnect={() => handleConnect(provider)}
+                    onDisconnect={() => handleDisconnect(provider.providerId)}
                   />
                 ))}
               </div>
@@ -140,7 +230,9 @@ export function ConnectorsSection() {
                     key={provider.providerId}
                     provider={provider}
                     connected={false}
+                    loading={connectingId === provider.providerId}
                     onConnect={() => handleConnect(provider)}
+                    onDisconnect={() => {}}
                   />
                 ))}
               </div>
@@ -161,11 +253,15 @@ export function ConnectorsSection() {
 function ProviderCard({
   provider,
   connected,
+  loading,
   onConnect,
+  onDisconnect,
 }: {
   provider: OAuthProvider;
   connected: boolean;
+  loading: boolean;
   onConnect: () => void;
+  onDisconnect: () => void;
 }) {
   return (
     <Card>
@@ -188,9 +284,28 @@ function ProviderCard({
             </div>
             <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{provider.description}</p>
             <div className="flex items-center gap-2 mt-3">
-              {!connected && (
-                <Button size="sm" onClick={onConnect}>
-                  <Link2 className="w-3 h-3 mr-1" />
+              {connected ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-red-600 hover:text-red-700"
+                  onClick={onDisconnect}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Unlink className="w-3 h-3 mr-1" />
+                  )}
+                  Disconnect
+                </Button>
+              ) : (
+                <Button size="sm" onClick={onConnect} disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                  ) : (
+                    <Link2 className="w-3 h-3 mr-1" />
+                  )}
                   Connect
                 </Button>
               )}
