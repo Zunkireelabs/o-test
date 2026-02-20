@@ -1,15 +1,28 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 
 export function Header() {
   const { user, apiStatus, logout } = useAppStore();
   const router = useRouter();
 
-  const handleLogout = () => {
+  const supabase = useMemo(() => {
+    try {
+      return createClient();
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     logout();
     router.push('/login');
   };

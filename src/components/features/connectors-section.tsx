@@ -1,95 +1,77 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { api } from '@/lib/api';
-import { Loader2, Search, RefreshCw, Link2, Unlink } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
+import { Search, Link2, Loader2 } from 'lucide-react';
+import { OAUTH_PROVIDERS, type OAuthProvider } from '@/lib/integrations/providers';
 
-interface ConnectorApp {
-  id: string;
-  name: string;
-  icon: string;
-  category: string;
-  description: string;
-  connected: boolean;
-  connector_id?: string;
-}
-
-const categories = ['All', 'Communication', 'Storage', 'Productivity', 'CRM', 'Development'];
+const categories = ['All', 'Productivity', 'Communication', 'Project Management', 'Developer Tools', 'CRM & Sales'];
 
 export function ConnectorsSection() {
-  const [apps, setApps] = useState<ConnectorApp[]>([]);
+  const [connectedIds, setConnectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
-  const [connectingId, setConnectingId] = useState<string | null>(null);
 
-  const loadApps = async () => {
-    setLoading(true);
+  const supabase = useMemo(() => {
     try {
-      const data = await api.getConnectorApps();
-      setApps(data.apps || []);
-    } catch (err) {
-      console.error('Failed to load apps:', err);
-    } finally {
-      setLoading(false);
+      return createClient();
+    } catch {
+      return null;
     }
-  };
-
-  useEffect(() => {
-    loadApps();
   }, []);
 
-  const handleConnect = async (app: ConnectorApp) => {
-    setConnectingId(app.id);
-    try {
-      const { authorization_url } = await api.authorizeConnector(app.id);
-      window.open(authorization_url, '_blank');
-    } catch (err) {
-      console.error('Failed to connect:', err);
-    } finally {
-      setConnectingId(null);
-    }
-  };
+  // Load connected integrations from Supabase
+  useEffect(() => {
+    const loadConnections = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
 
-  const handleDisconnect = async (app: ConnectorApp) => {
-    if (!app.connector_id) return;
-    setConnectingId(app.id);
-    try {
-      await api.disconnectConnector(app.connector_id);
-      loadApps();
-    } catch (err) {
-      console.error('Failed to disconnect:', err);
-    } finally {
-      setConnectingId(null);
-    }
-  };
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setLoading(false);
+          return;
+        }
 
-  const handleSync = async (app: ConnectorApp) => {
-    if (!app.connector_id) return;
-    setConnectingId(app.id);
-    try {
-      await api.syncConnector(app.connector_id);
-      alert('Sync started');
-    } catch (err) {
-      console.error('Failed to sync:', err);
-    } finally {
-      setConnectingId(null);
-    }
-  };
+        const { data: integrations } = await supabase
+          .from('integrations')
+          .select('provider')
+          .eq('user_id', user.id)
+          .eq('status', 'connected');
 
-  const filteredApps = apps.filter((app) => {
-    const matchesSearch = app.name.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = category === 'All' || app.category === category;
+        const providers = (integrations as { provider: string }[] | null)?.map(i => i.provider) || [];
+        setConnectedIds(providers);
+      } catch (err) {
+        console.error('Failed to load integrations:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadConnections();
+  }, [supabase]);
+
+  const filteredProviders = OAUTH_PROVIDERS.filter((provider) => {
+    const matchesSearch = provider.displayName.toLowerCase().includes(search.toLowerCase()) ||
+                          provider.description.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = category === 'All' || provider.category === category;
     return matchesSearch && matchesCategory;
   });
 
-  const connectedApps = filteredApps.filter((app) => app.connected);
-  const availableApps = filteredApps.filter((app) => !app.connected);
+  const connectedProviders = filteredProviders.filter((p) => connectedIds.includes(p.providerId));
+  const availableProviders = filteredProviders.filter((p) => !connectedIds.includes(p.providerId));
+
+  const handleConnect = (provider: OAuthProvider) => {
+    // TODO: Implement OAuth flow in Phase 4
+    alert(`OAuth flow for ${provider.displayName} coming soon!`);
+  };
 
   return (
     <div className="max-w-4xl">
@@ -101,8 +83,8 @@ export function ConnectorsSection() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
             value={search}
@@ -111,7 +93,7 @@ export function ConnectorsSection() {
             className="pl-10"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {categories.map((cat) => (
             <Button
               key={cat}
@@ -132,18 +114,16 @@ export function ConnectorsSection() {
       ) : (
         <div className="space-y-8">
           {/* Connected Apps */}
-          {connectedApps.length > 0 && (
+          {connectedProviders.length > 0 && (
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-4">Connected</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {connectedApps.map((app) => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    loading={connectingId === app.id}
-                    onConnect={() => handleConnect(app)}
-                    onDisconnect={() => handleDisconnect(app)}
-                    onSync={() => handleSync(app)}
+                {connectedProviders.map((provider) => (
+                  <ProviderCard
+                    key={provider.providerId}
+                    provider={provider}
+                    connected={true}
+                    onConnect={() => handleConnect(provider)}
                   />
                 ))}
               </div>
@@ -151,25 +131,23 @@ export function ConnectorsSection() {
           )}
 
           {/* Available Apps */}
-          {availableApps.length > 0 && (
+          {availableProviders.length > 0 && (
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-4">Available</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {availableApps.map((app) => (
-                  <AppCard
-                    key={app.id}
-                    app={app}
-                    loading={connectingId === app.id}
-                    onConnect={() => handleConnect(app)}
-                    onDisconnect={() => handleDisconnect(app)}
-                    onSync={() => handleSync(app)}
+                {availableProviders.map((provider) => (
+                  <ProviderCard
+                    key={provider.providerId}
+                    provider={provider}
+                    connected={false}
+                    onConnect={() => handleConnect(provider)}
                   />
                 ))}
               </div>
             </div>
           )}
 
-          {filteredApps.length === 0 && (
+          {filteredProviders.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               No apps found matching your criteria.
             </div>
@@ -180,63 +158,39 @@ export function ConnectorsSection() {
   );
 }
 
-function AppCard({
-  app,
-  loading,
+function ProviderCard({
+  provider,
+  connected,
   onConnect,
-  onDisconnect,
-  onSync,
 }: {
-  app: ConnectorApp;
-  loading: boolean;
+  provider: OAuthProvider;
+  connected: boolean;
   onConnect: () => void;
-  onDisconnect: () => void;
-  onSync: () => void;
 }) {
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">
-            {app.icon}
+          <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {provider.icon.startsWith('http') ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={provider.icon} alt={provider.displayName} className="w-8 h-8" />
+            ) : (
+              <span className="text-2xl">{provider.icon}</span>
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-gray-900">{app.name}</h3>
-              {app.connected && (
+              <h3 className="font-medium text-gray-900">{provider.displayName}</h3>
+              {connected && (
                 <Badge className="bg-green-100 text-green-700 text-xs">Connected</Badge>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{app.description}</p>
+            <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{provider.description}</p>
             <div className="flex items-center gap-2 mt-3">
-              {app.connected ? (
-                <>
-                  <Button size="sm" variant="outline" onClick={onSync} disabled={loading}>
-                    {loading ? (
-                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    ) : (
-                      <RefreshCw className="w-3 h-3 mr-1" />
-                    )}
-                    Sync
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700"
-                    onClick={onDisconnect}
-                    disabled={loading}
-                  >
-                    <Unlink className="w-3 h-3 mr-1" />
-                    Disconnect
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" onClick={onConnect} disabled={loading}>
-                  {loading ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Link2 className="w-3 h-3 mr-1" />
-                  )}
+              {!connected && (
+                <Button size="sm" onClick={onConnect}>
+                  <Link2 className="w-3 h-3 mr-1" />
                   Connect
                 </Button>
               )}

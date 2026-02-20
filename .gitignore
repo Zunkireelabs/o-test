@@ -34,6 +34,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# MCP config (contains database credentials)
+.mcp.json
+
+# Local Claude settings
+.claude/settings.local.json
+
 # vercel
 .vercel
 

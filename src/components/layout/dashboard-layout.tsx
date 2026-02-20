@@ -1,34 +1,56 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 import { useAppStore } from '@/stores/app-store';
-import { api } from '@/lib/api';
+import { createClient } from '@/lib/supabase/client';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { token, setUser, setApiStatus, logout } = useAppStore();
+  const { setUser, setApiStatus, logout } = useAppStore();
+
+  const supabase = useMemo(() => {
+    try {
+      return createClient();
+    } catch {
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
-    // Check if authenticated
-    const storedToken = sessionStorage.getItem('orca_token');
-    if (!storedToken) {
+    if (!supabase) {
       router.push('/login');
       return;
     }
 
-    // Load user data
+    // Load user data from Supabase Auth
     const loadUser = async () => {
       try {
-        const userData = await api.getMe();
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (error || !user) {
+          logout();
+          router.push('/login');
+          return;
+        }
+
+        // Get profile data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        const profileData = profile as { name?: string; avatar_url?: string } | null;
+
         setUser({
-          id: userData.site_id,
-          email: userData.email,
-          name: userData.name,
-          site_id: userData.site_id,
-          created_at: userData.created_at,
+          id: user.id,
+          email: user.email || '',
+          name: profileData?.name || user.email?.split('@')[0] || 'User',
+          avatar_url: profileData?.avatar_url,
+          created_at: user.created_at,
         });
       } catch {
         logout();
@@ -38,17 +60,32 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
     loadUser();
 
-    // Check API status periodically
-    const checkApi = async () => {
-      const isOnline = await api.checkHealth();
-      setApiStatus(isOnline ? 'online' : 'offline');
+    // Check Supabase connection status
+    const checkConnection = async () => {
+      try {
+        const { error } = await supabase.from('profiles').select('count', { count: 'exact', head: true });
+        setApiStatus(error ? 'offline' : 'online');
+      } catch {
+        setApiStatus('offline');
+      }
     };
 
-    checkApi();
-    const interval = setInterval(checkApi, 30000);
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000);
 
-    return () => clearInterval(interval);
-  }, [token, router, setUser, setApiStatus, logout]);
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        logout();
+        router.push('/login');
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.unsubscribe();
+    };
+  }, [supabase, router, setUser, setApiStatus, logout]);
 
   return (
     <div className="flex h-screen bg-white">

@@ -49,8 +49,8 @@ export function ProfileSection() {
             />
             <ProfileField
               icon={Building}
-              label="Site ID"
-              value={user?.site_id || '-'}
+              label="User ID"
+              value={user?.id ? user.id.slice(0, 8) + '...' : '-'}
             />
             <ProfileField
               icon={Calendar}

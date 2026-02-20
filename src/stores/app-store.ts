@@ -4,7 +4,6 @@ import type { User, NavSection } from '@/types';
 interface AppState {
   // Auth
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
 
   // UI
@@ -14,7 +13,6 @@ interface AppState {
 
   // Actions
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   logout: () => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
@@ -25,7 +23,6 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   // Initial state
   user: null,
-  token: typeof window !== 'undefined' ? sessionStorage.getItem('orca_token') : null,
   isAuthenticated: false,
   sidebarCollapsed: false,
   currentSection: 'newtask',
@@ -34,18 +31,8 @@ export const useAppStore = create<AppState>((set) => ({
   // Actions
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
-  setToken: (token) => {
-    if (token) {
-      sessionStorage.setItem('orca_token', token);
-    } else {
-      sessionStorage.removeItem('orca_token');
-    }
-    set({ token, isAuthenticated: !!token });
-  },
-
   logout: () => {
-    sessionStorage.removeItem('orca_token');
-    set({ user: null, token: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false });
   },
 
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),

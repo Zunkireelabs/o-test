@@ -2,8 +2,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  site_id: string;
-  created_at: string;
+  avatar_url?: string;
+  created_at?: string;
 }
 
 export interface Job {

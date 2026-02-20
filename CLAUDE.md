@@ -41,7 +41,7 @@ supabase/
 ├── orca-component/       # Component generation
 ├── orca-api/             # API route generation
 ├── orca-agent/           # Agent orchestration
-└── orca-db/              # Database operations (MCP vs client)
+└── db-engineer/          # Database operations via Supabase MCP
 ```
 
 ## Available Skills
@@ -50,7 +50,7 @@ supabase/
 - `/orca-component` - Generate new components
 - `/orca-api` - Create API routes
 - `/orca-agent` - Agent orchestration setup
-- `/orca-db` - Database operations (chooses MCP vs Supabase client)
+- `/db-engineer` - Database operations (schema, queries, migrations)
 
 ## Database Schema
 Tables: `profiles`, `agents`, `workflows`, `knowledge_bases`, `integrations`
@@ -62,9 +62,10 @@ Run migrations:
 ```
 
 ## MCP Configuration
-MCP servers configured in `.mcp.json`:
-- `postgres` - Direct SQL access via PostgreSQL MCP
-- `supabase` - REST API access via Supabase PostgREST MCP
+Supabase MCP server configured in `.mcp.json`:
+- Uses `@modelcontextprotocol/server-supabase`
+- Provides: `query`, `list_tables`, `describe_table` tools
+- Enabled via `.claude/settings.local.json`
 
 ## Environment Variables
 Required in `.env.local`:
@@ -96,4 +97,4 @@ npm run lint     # Run ESLint
 - Use Tailwind CSS for styling
 - Use lucide-react for icons
 - Use framer-motion for animations
-- Use Supabase client for auth, MCP for data exploration
+- Use Supabase MCP for database exploration, Supabase client for auth
