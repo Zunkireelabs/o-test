@@ -8,8 +8,6 @@ import {
   Link,
   FileText,
   Upload,
-  Settings,
-  Code,
   Puzzle,
   Plus,
   Wrench,
@@ -21,8 +19,6 @@ const quickActions = [
   { id: 'url', label: 'Ingest URL', icon: Link, section: 'ingest' as const, tab: 'url' },
   { id: 'text', label: 'Add Text', icon: FileText, section: 'ingest' as const, tab: 'text' },
   { id: 'file', label: 'Upload File', icon: Upload, section: 'ingest' as const, tab: 'file' },
-  { id: 'widget', label: 'Configure Widget', icon: Settings, section: 'widget' as const },
-  { id: 'embed', label: 'Get Embed Code', icon: Code, section: 'embed' as const },
   { id: 'connect', label: 'Connect App', icon: Puzzle, section: 'connectors' as const },
 ];
 
@@ -83,7 +79,7 @@ export function NewTaskSection() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickAction(action)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-full text-sm font-medium text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 transition-colors tracking-[-0.01em]"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-full text-[12px] font-medium text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 transition-colors tracking-[-0.01em]"
               >
                 <Icon className="w-4 h-4" />
                 {action.label}
