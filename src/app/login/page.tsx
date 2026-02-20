@@ -204,8 +204,9 @@ export default function LoginPage() {
       {/* Footer */}
       <div className="login-footer">
         <div className="login-footer-brand">
+          <span className="from-text">from</span>
           <Image src="/orca-icon.png" alt="Orca" width={18} height={18} />
-          <span>Orca</span>
+          <span className="brand-name">Orca</span>
         </div>
         <div className="login-footer-links">
           <a href="#">Terms of service</a>
@@ -396,9 +397,12 @@ export default function LoginPage() {
           align-items: center;
           gap: 6px;
           font-size: 13px;
-          color: #9ca3af;
         }
-        .login-footer-brand span {
+        .login-footer-brand .from-text {
+          color: #9ca3af;
+          font-weight: 400;
+        }
+        .login-footer-brand .brand-name {
           color: #111;
           font-weight: 500;
         }
