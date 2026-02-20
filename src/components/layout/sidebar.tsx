@@ -44,7 +44,7 @@ export function Sidebar() {
   return (
     <motion.aside
       className={cn(
-        'h-screen bg-[#f7f7f7] flex flex-col flex-shrink-0 border-r border-gray-200',
+        'h-screen bg-zinc-50 flex flex-col flex-shrink-0 border-r border-zinc-200',
         'transition-all duration-200 ease-in-out'
       )}
       animate={{ width: sidebarCollapsed ? 68 : 240 }}
@@ -63,7 +63,7 @@ export function Sidebar() {
             className="flex-shrink-0"
           />
           <motion.span
-            className="text-xl font-semibold text-gray-900 whitespace-nowrap"
+            className="text-xl font-semibold text-zinc-900 whitespace-nowrap tracking-[-0.02em]"
             animate={{ opacity: sidebarCollapsed ? 0 : 1, width: sidebarCollapsed ? 0 : 'auto' }}
           >
             orca
@@ -72,7 +72,7 @@ export function Sidebar() {
         {!sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors"
+            className="p-2 rounded-md text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 transition-colors"
             title="Collapse sidebar"
           >
             <PanelLeftClose className="w-4 h-4" />
@@ -81,7 +81,7 @@ export function Sidebar() {
         {sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-200 hover:text-gray-900 transition-colors absolute left-4"
+            className="p-2 rounded-md text-zinc-500 hover:bg-zinc-200 hover:text-zinc-900 transition-colors absolute left-4"
             title="Expand sidebar"
           >
             <PanelLeft className="w-4 h-4" />
@@ -103,7 +103,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer Nav */}
-      <div className="px-3 py-3 border-t border-gray-200">
+      <div className="px-3 py-3 border-t border-zinc-200">
         {footerNavItems.map((item) => (
           <NavButton
             key={item.id}
@@ -136,10 +136,10 @@ function NavButton({
       onClick={onClick}
       title={item.label}
       className={cn(
-        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
-        'hover:bg-gray-100',
-        isActive && 'bg-gray-900 text-white hover:bg-gray-800',
-        !isActive && 'text-gray-600',
+        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium tracking-[-0.01em] transition-all',
+        'hover:bg-zinc-100',
+        isActive && 'bg-zinc-900 text-white hover:bg-zinc-800',
+        !isActive && 'text-zinc-600',
         isCollapsed && 'justify-center px-2'
       )}
     >

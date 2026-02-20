@@ -41,31 +41,31 @@ export function NewTaskSection() {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-2xl"
       >
-        <h1 className="text-3xl font-semibold text-gray-900 text-center mb-8">
+        <h1 className="text-3xl font-semibold text-zinc-900 text-center mb-8 tracking-[-0.025em]">
           What can I do for you?
         </h1>
 
         {/* Input Area */}
-        <div className="relative bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="relative bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask anything or start a task..."
-            className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-base p-4 pr-12"
+            className="min-h-[100px] resize-none border-0 focus-visible:ring-0 text-base p-4 pr-12 tracking-[-0.01em]"
             rows={3}
           />
-          <div className="flex items-center justify-between p-3 border-t border-gray-100">
+          <div className="flex items-center justify-between p-3 border-t border-zinc-100">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
                 <Plus className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-400">
                 <Wrench className="w-4 h-4" />
               </Button>
             </div>
             <Button
               size="icon"
-              className="h-8 w-8 rounded-full bg-gray-900 hover:bg-gray-800"
+              className="h-8 w-8 rounded-full bg-zinc-900 hover:bg-zinc-800"
               disabled={!input.trim()}
             >
               <ArrowUp className="w-4 h-4" />
@@ -83,7 +83,7 @@ export function NewTaskSection() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleQuickAction(action)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-full text-sm text-gray-600 hover:border-gray-300 hover:text-gray-900 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 rounded-full text-sm font-medium text-zinc-600 hover:border-zinc-300 hover:text-zinc-900 transition-colors tracking-[-0.01em]"
               >
                 <Icon className="w-4 h-4" />
                 {action.label}

@@ -67,16 +67,16 @@ export function WidgetConfigSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
       </div>
     );
   }
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Widget Configuration</h1>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Widget Configuration</h1>
+        <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
           Customize how your chat widget looks and behaves.
         </p>
       </div>
@@ -84,7 +84,7 @@ export function WidgetConfigSection() {
       <Card>
         <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="brandName">Brand Name</Label>
+            <Label htmlFor="brandName" className="tracking-[-0.01em]">Brand Name</Label>
             <Input
               id="brandName"
               value={config.brand_name}
@@ -94,7 +94,7 @@ export function WidgetConfigSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="tone">Tone</Label>
+            <Label htmlFor="tone" className="tracking-[-0.01em]">Tone</Label>
             <Select
               value={config.tone}
               onValueChange={(value) => setConfig({ ...config, tone: value })}
@@ -111,14 +111,14 @@ export function WidgetConfigSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="primaryColor">Primary Color</Label>
+            <Label htmlFor="primaryColor" className="tracking-[-0.01em]">Primary Color</Label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 id="primaryColor"
                 value={config.primary_color}
                 onChange={(e) => setConfig({ ...config, primary_color: e.target.value })}
-                className="w-10 h-10 rounded cursor-pointer border border-gray-200"
+                className="w-10 h-10 rounded-lg cursor-pointer border border-zinc-200"
               />
               <Input
                 value={config.primary_color}
@@ -130,7 +130,7 @@ export function WidgetConfigSection() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="welcomeMessage">Welcome Message</Label>
+            <Label htmlFor="welcomeMessage" className="tracking-[-0.01em]">Welcome Message</Label>
             <Textarea
               id="welcomeMessage"
               value={config.welcome_message}
@@ -143,8 +143,8 @@ export function WidgetConfigSection() {
           {status !== 'idle' && (
             <div
               className={cn(
-                'flex items-center gap-2 p-3 rounded-lg text-sm',
-                status === 'success' && 'bg-green-50 text-green-700',
+                'flex items-center gap-2 p-3 rounded-xl text-sm font-medium tracking-[-0.01em]',
+                status === 'success' && 'bg-emerald-50 text-emerald-700',
                 status === 'error' && 'bg-red-50 text-red-700'
               )}
             >

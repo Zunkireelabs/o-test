@@ -28,27 +28,27 @@ export function Header() {
   };
 
   return (
-    <header className="h-15 px-6 flex items-center justify-end border-b border-gray-100">
+    <header className="h-15 px-6 flex items-center justify-end border-b border-zinc-100">
       <div className="flex items-center gap-5">
         {/* API Status */}
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-zinc-500 tracking-[-0.01em]">
           <div
             className={cn(
               'w-2 h-2 rounded-full',
-              apiStatus === 'online' && 'bg-green-500',
+              apiStatus === 'online' && 'bg-emerald-500',
               apiStatus === 'offline' && 'bg-red-500',
-              apiStatus === 'checking' && 'bg-yellow-500 animate-pulse'
+              apiStatus === 'checking' && 'bg-amber-500 animate-pulse'
             )}
           />
-          <span>
-            {apiStatus === 'online' && 'API Online'}
-            {apiStatus === 'offline' && 'API Offline'}
+          <span className="font-medium">
+            {apiStatus === 'online' && 'Online'}
+            {apiStatus === 'offline' && 'Offline'}
             {apiStatus === 'checking' && 'Checking...'}
           </span>
         </div>
 
         {/* User */}
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-zinc-900 tracking-[-0.01em]">
           {user?.name || 'User'}
         </span>
 
@@ -57,7 +57,7 @@ export function Header() {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="text-gray-500 hover:text-gray-900"
+          className="text-zinc-500 hover:text-zinc-900"
         >
           Logout
         </Button>

@@ -239,11 +239,14 @@ export default function LoginPage() {
       <style jsx>{`
         .login-page {
           height: 100vh;
-          background: #f5f5f0;
+          background: #fafafa;
           display: flex;
           flex-direction: column;
           overflow: hidden;
           position: relative;
+          font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
         }
         .login-header,
         .login-main,
@@ -266,14 +269,17 @@ export default function LoginPage() {
         .login-brand span {
           font-size: 20px;
           font-weight: 600;
-          color: #111;
+          color: #0a0a0a;
+          letter-spacing: -0.02em;
         }
         .login-api-status {
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 13px;
-          color: #6b7280;
+          font-weight: 450;
+          color: #71717a;
+          letter-spacing: -0.01em;
         }
         .status-dot {
           width: 8px;
@@ -282,7 +288,7 @@ export default function LoginPage() {
         }
         .status-dot.green { background: #22c55e; }
         .status-dot.red { background: #ef4444; }
-        .status-dot.gray { background: #9ca3af; }
+        .status-dot.gray { background: #a1a1aa; }
         .login-main {
           flex: 1;
           display: flex;
@@ -293,40 +299,47 @@ export default function LoginPage() {
           overflow-y: auto;
         }
         .login-icon {
-          margin-bottom: 20px;
+          margin-bottom: 24px;
         }
         .login-title {
-          font-size: 26px;
-          font-weight: 700;
-          color: #111;
-          margin-bottom: 6px;
+          font-size: 28px;
+          font-weight: 600;
+          color: #0a0a0a;
+          margin-bottom: 8px;
           text-align: center;
+          letter-spacing: -0.025em;
         }
         .login-subtitle {
           font-size: 15px;
-          color: #6b7280;
-          margin-bottom: 24px;
+          font-weight: 400;
+          color: #71717a;
+          margin-bottom: 32px;
           text-align: center;
+          letter-spacing: -0.01em;
         }
         .login-card {
           width: 100%;
           max-width: 380px;
         }
         .login-error {
-          background: #fee2e2;
+          background: #fef2f2;
           color: #991b1b;
-          padding: 12px;
+          padding: 12px 14px;
           border-radius: 10px;
           font-size: 14px;
+          font-weight: 450;
           margin-bottom: 16px;
+          letter-spacing: -0.01em;
         }
         .login-message {
-          background: #dcfce7;
+          background: #f0fdf4;
           color: #166534;
-          padding: 12px;
+          padding: 12px 14px;
           border-radius: 10px;
           font-size: 14px;
+          font-weight: 450;
           margin-bottom: 16px;
+          letter-spacing: -0.01em;
         }
         .oauth-btn {
           width: 100%;
@@ -336,39 +349,42 @@ export default function LoginPage() {
           gap: 12px;
           padding: 12px 20px;
           background: white;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #e4e4e7;
           border-radius: 10px;
           font-size: 14px;
           font-weight: 500;
-          color: #111;
+          color: #0a0a0a;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.15s ease;
           margin-bottom: 10px;
+          letter-spacing: -0.01em;
         }
         .oauth-btn:hover:not(:disabled) {
-          background: #f9fafb;
-          border-color: #d1d5db;
+          background: #fafafa;
+          border-color: #d4d4d8;
         }
         .oauth-btn:disabled {
-          opacity: 0.6;
+          opacity: 0.5;
           cursor: not-allowed;
         }
         .divider {
           display: flex;
           align-items: center;
-          margin: 16px 0;
-          color: #9ca3af;
+          margin: 20px 0;
+          color: #a1a1aa;
           font-size: 13px;
+          font-weight: 450;
+          letter-spacing: -0.01em;
         }
         .divider::before,
         .divider::after {
           content: '';
           flex: 1;
           height: 1px;
-          background: #e5e7eb;
+          background: #e4e4e7;
         }
         .divider span {
-          padding: 0 14px;
+          padding: 0 16px;
         }
         .form-group {
           margin-bottom: 12px;
@@ -377,93 +393,106 @@ export default function LoginPage() {
           width: 100%;
           padding: 12px 14px;
           font-size: 14px;
+          font-weight: 400;
           border-radius: 10px;
-          border: 1px solid #e5e7eb;
+          border: 1px solid #e4e4e7;
           background: white;
           outline: none;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+          letter-spacing: -0.01em;
         }
         .form-group input:focus {
-          border-color: #111;
+          border-color: #0a0a0a;
+          box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.05);
         }
         .form-group input::placeholder {
-          color: #9ca3af;
+          color: #a1a1aa;
+          font-weight: 400;
         }
         .form-group input:disabled {
-          background: #f3f4f6;
+          background: #f4f4f5;
           cursor: not-allowed;
         }
         .login-btn {
           width: 100%;
           padding: 12px 20px;
           font-size: 14px;
-          font-weight: 600;
+          font-weight: 500;
           border-radius: 10px;
-          background: #6b7280;
+          background: #18181b;
           color: white;
           border: none;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: all 0.15s ease;
           margin-top: 4px;
+          letter-spacing: -0.01em;
         }
         .login-btn:hover:not(:disabled) {
-          background: #4b5563;
+          background: #27272a;
         }
         .login-btn:disabled {
-          background: #9ca3af;
+          background: #a1a1aa;
           cursor: not-allowed;
         }
         .auth-toggle {
           text-align: center;
-          margin-top: 16px;
+          margin-top: 20px;
           font-size: 14px;
-          color: #6b7280;
+          font-weight: 400;
+          color: #71717a;
+          letter-spacing: -0.01em;
         }
         .auth-toggle button {
           background: none;
           border: none;
-          color: #111;
+          color: #0a0a0a;
           font-weight: 500;
           cursor: pointer;
           text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .auth-toggle button:hover {
-          color: #4b5563;
+          color: #3f3f46;
         }
         .login-footer {
           flex-shrink: 0;
-          padding: 16px 32px;
+          padding: 20px 32px;
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
         .login-footer-brand {
           display: flex;
           align-items: center;
           gap: 6px;
           font-size: 13px;
+          letter-spacing: -0.01em;
         }
         .login-footer-brand .from-text {
-          color: #9ca3af;
+          color: #a1a1aa;
           font-weight: 400;
         }
         .login-footer-brand .brand-name {
-          color: #111;
+          color: #0a0a0a;
           font-weight: 500;
         }
         .login-footer-links {
           display: flex;
           align-items: center;
-          gap: 20px;
+          gap: 24px;
           font-size: 12px;
-          color: #6b7280;
+          font-weight: 400;
+          color: #71717a;
+          letter-spacing: -0.01em;
         }
         .login-footer-links a {
-          color: #6b7280;
+          color: #71717a;
           text-decoration: none;
+          transition: color 0.15s ease;
         }
         .login-footer-links a:hover {
-          text-decoration: underline;
+          color: #3f3f46;
         }
       `}</style>
     </div>

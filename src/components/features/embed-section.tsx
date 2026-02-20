@@ -33,9 +33,9 @@ export function EmbedSection() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Embed Code</h1>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Embed Code</h1>
+        <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
           Add this code to your website to display the chat widget.
         </p>
       </div>
@@ -44,18 +44,18 @@ export function EmbedSection() {
         <CardContent className="pt-6">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
             </div>
           ) : code ? (
             <div className="space-y-4">
               <div className="relative">
-                <pre className="bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto text-sm">
+                <pre className="bg-zinc-900 text-zinc-100 rounded-xl p-4 overflow-x-auto text-sm font-mono">
                   <code>{code}</code>
                 </pre>
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="absolute top-2 right-2"
+                  className="absolute top-3 right-3"
                   onClick={handleCopy}
                 >
                   {copied ? (
@@ -72,20 +72,20 @@ export function EmbedSection() {
                 </Button>
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-blue-900 mb-1">How to use</h3>
-                <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside">
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h3 className="text-sm font-semibold text-blue-900 mb-2 tracking-[-0.01em]">How to use</h3>
+                <ol className="text-sm text-blue-700 space-y-1 list-decimal list-inside tracking-[-0.01em]">
                   <li>Copy the code above</li>
-                  <li>Paste it before the closing <code className="bg-blue-100 px-1 rounded">&lt;/body&gt;</code> tag</li>
+                  <li>Paste it before the closing <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs">&lt;/body&gt;</code> tag</li>
                   <li>The widget will appear on your website</li>
                 </ol>
               </div>
             </div>
           ) : (
             <div className="text-center py-12">
-              <Code className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-              <p className="text-gray-500">No embed code available.</p>
-              <p className="text-sm text-gray-400">Configure your widget first.</p>
+              <Code className="w-10 h-10 mx-auto text-zinc-300 mb-3" />
+              <p className="text-zinc-500 tracking-[-0.01em]">No embed code available.</p>
+              <p className="text-sm text-zinc-400 tracking-[-0.01em]">Configure your widget first.</p>
             </div>
           )}
         </CardContent>

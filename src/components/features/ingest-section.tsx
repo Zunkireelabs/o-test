@@ -17,9 +17,9 @@ export function IngestSection() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Ingest Data</h1>
-        <p className="text-sm text-gray-500 mt-1">
+      <div className="mb-8">
+        <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Ingest Data</h1>
+        <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
           Add content to your knowledge base via URL, text, or file upload.
         </p>
       </div>
@@ -245,24 +245,24 @@ function FileIngestForm() {
         {...getRootProps()}
         className={cn(
           'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors',
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-zinc-200 hover:border-zinc-300'
         )}
       >
         <input {...getInputProps()} />
-        <Upload className="w-10 h-10 mx-auto text-gray-400 mb-3" />
-        <p className="text-sm text-gray-600">
+        <Upload className="w-10 h-10 mx-auto text-zinc-400 mb-3" />
+        <p className="text-sm text-zinc-600 tracking-[-0.01em]">
           {isDragActive ? 'Drop the file here' : 'Drop files here or click to browse'}
         </p>
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-zinc-400 mt-1 tracking-[-0.01em]">
           PDF, Word, Excel, PowerPoint, CSV, TXT, images
         </p>
       </div>
 
       {file && (
-        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+        <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-xl">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{file.name}</p>
-            <p className="text-xs text-gray-500">{(file.size / 1024).toFixed(1)} KB</p>
+            <p className="text-sm font-medium text-zinc-900 truncate tracking-[-0.01em]">{file.name}</p>
+            <p className="text-xs text-zinc-500 tracking-[-0.01em]">{(file.size / 1024).toFixed(1)} KB</p>
           </div>
           <Button variant="ghost" size="sm" onClick={() => setFile(null)}>
             Remove
@@ -354,19 +354,19 @@ function ApiKeysForm() {
     <div className="space-y-6">
       {/* Client API Key */}
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-1">Client API Key</h3>
-        <p className="text-sm text-gray-500 mb-3">
+        <h3 className="text-base font-semibold text-zinc-900 mb-1 tracking-[-0.02em]">Client API Key</h3>
+        <p className="text-sm text-zinc-500 mb-3 tracking-[-0.01em]">
           Use this key for programmatic API access.
         </p>
         <div className="flex items-center gap-2">
-          <Input value={clientKey} readOnly className="font-mono text-sm bg-gray-50" />
+          <Input value={clientKey} readOnly className="font-mono text-sm bg-zinc-50" />
           <Button variant="outline" onClick={() => navigator.clipboard.writeText(clientKey)}>
             Copy
           </Button>
         </div>
         {newKey && (
-          <div className="mt-3 p-3 bg-green-50 rounded-lg">
-            <p className="text-sm text-green-700 mb-2">New key generated. Copy it now.</p>
+          <div className="mt-3 p-3 bg-emerald-50 rounded-xl">
+            <p className="text-sm text-emerald-700 mb-2 tracking-[-0.01em]">New key generated. Copy it now.</p>
             <div className="flex items-center gap-2">
               <Input value={newKey} readOnly className="font-mono text-sm bg-white" />
               <Button variant="outline" onClick={() => navigator.clipboard.writeText(newKey)}>
@@ -389,8 +389,8 @@ function ApiKeysForm() {
 
       {/* OpenAI Key */}
       <div>
-        <h3 className="text-base font-semibold text-gray-900 mb-1">OpenAI API Key</h3>
-        <p className="text-sm text-gray-500 mb-3">
+        <h3 className="text-base font-semibold text-zinc-900 mb-1 tracking-[-0.02em]">OpenAI API Key</h3>
+        <p className="text-sm text-zinc-500 mb-3 tracking-[-0.01em]">
           {hasOpenaiKey
             ? 'Your OpenAI key is configured.'
             : 'Add your OpenAI key for enhanced features.'}
