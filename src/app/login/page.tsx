@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAppStore } from '@/stores/app-store';
 import { api } from '@/lib/api';
@@ -12,7 +12,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const router = useRouter();
   const { setToken, setUser } = useAppStore();
@@ -26,63 +25,6 @@ export default function LoginPage() {
     checkApi();
     const interval = setInterval(checkApi, 30000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Particle wave animation
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animationId: number;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-
-    const drawWave = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const time = Date.now() * 0.001;
-      const waveCount = 3;
-      const colors = [
-        'rgba(200, 200, 180, 0.3)',
-        'rgba(180, 180, 160, 0.2)',
-        'rgba(160, 160, 140, 0.15)',
-      ];
-
-      for (let w = 0; w < waveCount; w++) {
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height);
-
-        for (let x = 0; x <= canvas.width; x += 5) {
-          const y = canvas.height * (0.65 + w * 0.08) +
-            Math.sin(x * 0.003 + time + w) * 40 +
-            Math.sin(x * 0.007 + time * 1.3 + w) * 25 +
-            Math.sin(x * 0.001 + time * 0.5 + w) * 60;
-          ctx.lineTo(x, y);
-        }
-
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.closePath();
-        ctx.fillStyle = colors[w];
-        ctx.fill();
-      }
-
-      animationId = requestAnimationFrame(drawWave);
-    };
-
-    resize();
-    drawWave();
-
-    window.addEventListener('resize', resize);
-    return () => {
-      cancelAnimationFrame(animationId);
-      window.removeEventListener('resize', resize);
-    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -114,9 +56,6 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      {/* Particle wave background */}
-      <canvas ref={canvasRef} className="particle-wave-canvas" />
-
       {/* Header */}
       <div className="login-header">
         <div className="login-brand">
@@ -223,15 +162,6 @@ export default function LoginPage() {
           flex-direction: column;
           overflow: hidden;
           position: relative;
-        }
-        .particle-wave-canvas {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-          z-index: 0;
         }
         .login-header,
         .login-main,
