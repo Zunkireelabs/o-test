@@ -178,7 +178,10 @@ orca/
 ├── middleware.ts              # Auth middleware
 ├── src/
 │   ├── app/
-│   │   ├── auth/callback/     # OAuth & email verification
+│   │   ├── api/integrations/oauth/  # OAuth API routes
+│   │   │   ├── [provider]/authorize/route.ts
+│   │   │   └── callback/route.ts
+│   │   ├── auth/callback/     # Supabase auth callback
 │   │   ├── dashboard/         # Protected dashboard routes
 │   │   └── login/             # Login page
 │   ├── components/
@@ -191,7 +194,9 @@ orca/
 │   │   │   ├── client.ts      # Browser Supabase client
 │   │   │   ├── server.ts      # Server Supabase client
 │   │   │   └── middleware.ts  # Session management
-│   │   └── api.ts             # API client
+│   │   ├── integrations/
+│   │   │   └── providers.ts   # 30+ OAuth provider configs
+│   │   └── api.ts             # API client (legacy)
 │   ├── stores/                # Zustand stores
 │   ├── types/
 │   │   ├── database.ts        # Supabase database types
@@ -253,6 +258,9 @@ npm run lint     # Run ESLint
 - Auto-create profile on signup
 - Build passes
 - Vercel deployment working
+- **Dashboard uses Supabase Auth** (shows user name, online status)
+- **OAuth Integrations UI** with 30+ providers
+- **OAuth API routes** for connect/disconnect flow
 
 ### Login Flow
 1. User visits `/login`
@@ -260,16 +268,22 @@ npm run lint     # Run ESLint
 3. On success, redirected to `/dashboard`
 4. If not logged in and tries `/dashboard`, redirected to `/login`
 
+### Dashboard Features
+- Header shows "Online" when connected to Supabase
+- User name displayed from profile
+- Logout via Supabase Auth
+- Integrations page shows 30+ OAuth providers with Connect/Disconnect buttons
+
 ---
 
 ## Pending / Future Work
 
-1. **OAuth Providers**: Enable Google, Microsoft, Apple in Supabase dashboard
-2. **Dashboard Features**: Build out the actual dashboard functionality
-3. **Agents CRUD**: Create, read, update, delete agents
+1. **OAuth Provider Credentials**: Add client IDs/secrets for each provider (see Integrations section)
+2. **Login OAuth**: Enable Google, Microsoft, Apple login in Supabase dashboard
+3. **Agents CRUD**: Create, read, update, delete agents UI
 4. **Workflows**: Build workflow designer/executor
 5. **Knowledge Bases**: Implement data ingestion
-6. **Integrations**: Connect external services
+6. **Integration Sync**: Implement data sync for connected integrations (e.g., Notion sync)
 
 ---
 
@@ -280,10 +294,97 @@ npm run lint     # Run ESLint
 | `middleware.ts` | Auth middleware, protects routes |
 | `src/lib/supabase/client.ts` | Browser-side Supabase client |
 | `src/lib/supabase/server.ts` | Server-side Supabase client |
+| `src/lib/integrations/providers.ts` | OAuth provider configurations (30+) |
 | `src/app/login/page.tsx` | Login page component |
 | `src/app/dashboard/page.tsx` | Dashboard page |
+| `src/app/api/integrations/oauth/` | OAuth API routes |
+| `src/components/features/connectors-section.tsx` | Integrations UI |
 | `src/stores/app-store.ts` | Global Zustand store |
 | `src/types/database.ts` | TypeScript types for DB tables |
+
+---
+
+## Integrations System
+
+### Architecture
+The integrations system allows users to connect external services via OAuth.
+
+```
+User clicks Connect
+       ↓
+Frontend calls /api/integrations/oauth/[provider]/authorize
+       ↓
+API returns authorization URL
+       ↓
+User redirected to provider (e.g., Notion, GitHub)
+       ↓
+User grants consent
+       ↓
+Provider redirects to /api/integrations/oauth/callback
+       ↓
+Callback exchanges code for tokens
+       ↓
+Tokens stored in Supabase `integrations` table
+       ↓
+User redirected to dashboard with success notification
+```
+
+### Available Providers (30+)
+Defined in `src/lib/integrations/providers.ts`:
+
+| Category | Providers |
+|----------|-----------|
+| Productivity | Notion, Google Drive, Google Docs, OneDrive, Dropbox, Airtable |
+| Communication | Slack, Microsoft Teams, Gmail, Discord, Zoom |
+| Project Management | Jira, Confluence, Asana, Trello, Linear, ClickUp |
+| Developer Tools | GitHub, GitLab, Bitbucket, Figma |
+| CRM & Sales | Salesforce, HubSpot, Pipedrive |
+| Support | Zendesk, Intercom |
+| Social Media | LinkedIn, Twitter/X |
+
+### Adding OAuth Credentials
+
+To enable a provider, add environment variables in Vercel:
+
+```bash
+# Example for Notion
+NOTION_CLIENT_ID=your-client-id
+NOTION_CLIENT_SECRET=your-client-secret
+
+# Example for GitHub
+GITHUB_CLIENT_ID=your-client-id
+GITHUB_CLIENT_SECRET=your-client-secret
+
+# App URL (required for OAuth callbacks)
+NEXT_PUBLIC_APP_URL=https://o-test-two.vercel.app
+```
+
+### Creating OAuth Apps
+
+For each provider you want to enable:
+
+1. **Notion**: https://www.notion.so/my-integrations → Create OAuth integration
+2. **GitHub**: https://github.com/settings/developers → New OAuth App
+3. **Slack**: https://api.slack.com/apps → Create New App
+4. **Google**: https://console.cloud.google.com → APIs & Services → Credentials
+
+Set the callback URL to: `https://your-domain.vercel.app/api/integrations/oauth/callback`
+
+### Database Schema for Integrations
+
+```sql
+CREATE TABLE integrations (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id),
+  provider TEXT NOT NULL,        -- e.g., 'notion', 'github'
+  name TEXT NOT NULL,            -- Display name
+  credentials JSONB,             -- { access_token, refresh_token, expires_at }
+  config JSONB,                  -- { external_account_id, connected_at }
+  status integration_status,     -- 'connected', 'disconnected', 'error'
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+```
 
 ---
 
@@ -321,4 +422,4 @@ For questions about this handover, reach out to Sadin.
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-20 (OAuth Integrations added)*
