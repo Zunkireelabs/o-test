@@ -205,13 +205,13 @@ export default function LoginPage() {
       <div className="login-footer">
         <div className="login-footer-brand">
           <span className="from-text">from</span>
-          <Image src="/orca-icon.png" alt="Orca" width={18} height={18} />
-          <span className="brand-name">Orca</span>
+          <Image src="/zunkireelabs-icon.png" alt="Zunkireelabs" width={18} height={18} />
+          <span className="brand-name">zunkireelabs</span>
         </div>
         <div className="login-footer-links">
           <a href="#">Terms of service</a>
           <a href="#">Privacy policy</a>
-          <span>&copy;2026 Orca</span>
+          <span>&copy;2026 Zunkireelabs</span>
         </div>
       </div>
 
