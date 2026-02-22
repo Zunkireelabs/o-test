@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
 import { Search, Link2, Loader2, Unlink, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { OAUTH_PROVIDERS, type OAuthProvider } from '@/lib/integrations/providers';
+import { getCredentialKey } from '@/lib/integrations/credential-keys';
+import { ProviderSetupModal } from '@/components/features/provider-setup-modal';
 
 const categories = ['All', 'Productivity', 'Communication', 'Project Management', 'Developer Tools', 'CRM & Sales'];
 
@@ -19,6 +21,7 @@ export function ConnectorsSection() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [setupProvider, setSetupProvider] = useState<OAuthProvider | null>(null);
 
   const searchParams = useSearchParams();
 
@@ -93,7 +96,7 @@ export function ConnectorsSection() {
   const connectedProviders = filteredProviders.filter((p) => connectedIds.includes(p.providerId));
   const availableProviders = filteredProviders.filter((p) => !connectedIds.includes(p.providerId));
 
-  const handleConnect = async (provider: OAuthProvider) => {
+  const initiateOAuth = async (provider: OAuthProvider) => {
     setConnectingId(provider.providerId);
     try {
       const response = await fetch(`/api/integrations/oauth/${provider.providerId}/authorize`);
@@ -105,7 +108,6 @@ export function ConnectorsSection() {
       }
 
       if (data.authorization_url) {
-        // Redirect to OAuth provider
         window.location.href = data.authorization_url;
       }
     } catch (err) {
@@ -113,6 +115,28 @@ export function ConnectorsSection() {
       setNotification({ type: 'error', message: 'Failed to start authentication' });
     } finally {
       setConnectingId(null);
+    }
+  };
+
+  const handleConnect = async (provider: OAuthProvider) => {
+    // Check if credentials already exist for this provider family
+    const credentialKey = getCredentialKey(provider.providerId);
+    setConnectingId(provider.providerId);
+    try {
+      const res = await fetch(`/api/integrations/credentials/${credentialKey}`);
+      const { exists } = await res.json();
+
+      if (exists) {
+        // Credentials found — go straight to OAuth
+        await initiateOAuth(provider);
+      } else {
+        // No credentials — show setup modal
+        setConnectingId(null);
+        setSetupProvider(provider);
+      }
+    } catch {
+      // Fallback: try OAuth directly (env vars might be set)
+      await initiateOAuth(provider);
     }
   };
 
@@ -246,6 +270,17 @@ export function ConnectorsSection() {
           )}
         </div>
       )}
+
+      <ProviderSetupModal
+        provider={setupProvider}
+        open={!!setupProvider}
+        onOpenChange={(open) => { if (!open) setSetupProvider(null); }}
+        onCredentialsSaved={() => {
+          const provider = setupProvider;
+          setSetupProvider(null);
+          if (provider) initiateOAuth(provider);
+        }}
+      />
     </div>
   );
 }

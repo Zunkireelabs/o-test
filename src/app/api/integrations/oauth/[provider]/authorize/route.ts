@@ -1,20 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getProvider } from '@/lib/integrations/providers';
+import { setState } from '@/lib/integrations/state-store';
+import { getCredentialKey } from '@/lib/integrations/credential-keys';
 import { randomBytes } from 'crypto';
-
-// Store state tokens temporarily (in production, use Redis or database)
-const stateStore = new Map<string, { providerId: string; userId: string; expiresAt: number }>();
-
-// Clean up expired states periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of stateStore.entries()) {
-    if (value.expiresAt < now) {
-      stateStore.delete(key);
-    }
-  }
-}, 60000);
 
 export async function GET(
   request: NextRequest,
@@ -52,7 +41,7 @@ export async function GET(
 
     // Generate state token for CSRF protection
     const state = randomBytes(32).toString('hex');
-    stateStore.set(state, {
+    setState(state, {
       providerId,
       userId: user.id,
       expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
@@ -64,7 +53,7 @@ export async function GET(
 
     // Build authorization URL
     const authUrl = new URL(provider.authUrl);
-    authUrl.searchParams.set('client_id', getClientId(providerId));
+    authUrl.searchParams.set('client_id', await getClientId(providerId, user.id));
     authUrl.searchParams.set('redirect_uri', callbackUrl);
     authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('state', state);
@@ -88,9 +77,25 @@ export async function GET(
   }
 }
 
-function getClientId(providerId: string): string {
-  const envKey = `${providerId.toUpperCase()}_CLIENT_ID`;
-  return process.env[envKey] || '';
+async function getClientId(providerId: string, userId: string): Promise<string> {
+  const credentialKey = getCredentialKey(providerId);
+
+  // Try DB first
+  const admin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (admin.from('provider_credentials') as any)
+    .select('client_id')
+    .eq('user_id', userId)
+    .eq('credential_key', credentialKey)
+    .maybeSingle();
+
+  if (data?.client_id) return data.client_id;
+
+  // Fallback to env vars
+  if (credentialKey === 'google') return process.env.GOOGLE_CLIENT_ID || '';
+  if (credentialKey === 'atlassian') return process.env.ATLASSIAN_CLIENT_ID || '';
+  if (credentialKey === 'microsoft') return process.env.MICROSOFT_CLIENT_ID || '';
+  return process.env[`${providerId.toUpperCase()}_CLIENT_ID`] || '';
 }
 
 function addProviderSpecificParams(url: URL, providerId: string) {
@@ -114,6 +119,3 @@ function addProviderSpecificParams(url: URL, providerId: string) {
       break;
   }
 }
-
-// Export state store for callback route
-export { stateStore };

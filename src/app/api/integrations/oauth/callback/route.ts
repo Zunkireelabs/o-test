@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getProvider } from '@/lib/integrations/providers';
-
-// Import state store from authorize route
-// In production, use Redis or database for state storage
-const stateStore = new Map<string, { providerId: string; userId: string; expiresAt: number }>();
+import { getAndDeleteState } from '@/lib/integrations/state-store';
+import { getCredentialKey } from '@/lib/integrations/credential-keys';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -26,12 +24,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${dashboardUrl}?oauth_error=missing_params`);
   }
 
-  // Look up and consume state token
-  const stateData = stateStore.get(state);
+  // Look up and consume state token (atomic get + delete)
+  const stateData = getAndDeleteState(state);
   if (!stateData) {
     return NextResponse.redirect(`${dashboardUrl}?oauth_error=invalid_state`);
   }
-  stateStore.delete(state);
 
   // Check if state has expired
   if (stateData.expiresAt < Date.now()) {
@@ -48,7 +45,7 @@ export async function GET(request: NextRequest) {
   try {
     // Exchange code for tokens
     const callbackUrl = `${baseUrl}/api/integrations/oauth/callback`;
-    const tokenResponse = await exchangeCodeForTokens(provider, code, callbackUrl);
+    const tokenResponse = await exchangeCodeForTokens(providerId, provider, code, callbackUrl, userId);
 
     if (!tokenResponse.access_token) {
       throw new Error('No access token received');
@@ -56,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch user info if available
     let accountName = provider.displayName;
-    let externalAccountId = '';
+    const externalAccountId = '';
 
     // Get Supabase client
     const supabase = await createClient();
@@ -104,13 +101,58 @@ interface TokenResponse {
   scope?: string;
 }
 
+async function getCredentials(
+  providerId: string,
+  userId: string
+): Promise<{ clientId: string; clientSecret: string }> {
+  const credentialKey = getCredentialKey(providerId);
+
+  // Try DB first
+  const admin = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (admin.from('provider_credentials') as any)
+    .select('client_id, client_secret')
+    .eq('user_id', userId)
+    .eq('credential_key', credentialKey)
+    .maybeSingle();
+
+  if (data?.client_id && data?.client_secret) {
+    return { clientId: data.client_id, clientSecret: data.client_secret };
+  }
+
+  // Fallback to env vars
+  if (credentialKey === 'google') {
+    return {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    };
+  }
+  if (credentialKey === 'atlassian') {
+    return {
+      clientId: process.env.ATLASSIAN_CLIENT_ID || '',
+      clientSecret: process.env.ATLASSIAN_CLIENT_SECRET || '',
+    };
+  }
+  if (credentialKey === 'microsoft') {
+    return {
+      clientId: process.env.MICROSOFT_CLIENT_ID || '',
+      clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    };
+  }
+  return {
+    clientId: process.env[`${providerId.toUpperCase()}_CLIENT_ID`] || '',
+    clientSecret: process.env[`${providerId.toUpperCase()}_CLIENT_SECRET`] || '',
+  };
+}
+
 async function exchangeCodeForTokens(
-  provider: { providerId: string; tokenUrl: string },
+  providerId: string,
+  provider: { tokenUrl: string },
   code: string,
-  redirectUri: string
+  redirectUri: string,
+  userId: string
 ): Promise<TokenResponse> {
-  const clientId = process.env[`${provider.providerId.toUpperCase()}_CLIENT_ID`] || '';
-  const clientSecret = process.env[`${provider.providerId.toUpperCase()}_CLIENT_SECRET`] || '';
+  const { clientId, clientSecret } = await getCredentials(providerId, userId);
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -126,13 +168,13 @@ async function exchangeCodeForTokens(
   };
 
   // Notion requires Basic auth header
-  if (provider.providerId === 'notion') {
+  if (providerId === 'notion') {
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     headers['Authorization'] = `Basic ${credentials}`;
   }
 
   // GitHub requires Accept header
-  if (provider.providerId === 'github') {
+  if (providerId === 'github') {
     headers['Accept'] = 'application/json';
   }
 

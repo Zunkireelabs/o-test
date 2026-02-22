@@ -162,6 +162,32 @@ export interface Database {
           updated_at?: string;
         };
       };
+      provider_credentials: {
+        Row: {
+          id: string;
+          user_id: string;
+          credential_key: string;
+          client_id: string;
+          client_secret: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          credential_key: string;
+          client_id: string;
+          client_secret: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          credential_key?: string;
+          client_id?: string;
+          client_secret?: string;
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -186,3 +212,4 @@ export type Agent = Database['public']['Tables']['agents']['Row'];
 export type Workflow = Database['public']['Tables']['workflows']['Row'];
 export type KnowledgeBase = Database['public']['Tables']['knowledge_bases']['Row'];
 export type Integration = Database['public']['Tables']['integrations']['Row'];
+export type ProviderCredential = Database['public']['Tables']['provider_credentials']['Row'];
