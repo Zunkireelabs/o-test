@@ -8,7 +8,10 @@ const CREDENTIAL_KEY_MAP: Record<string, string> = {
   // Google family
   google_drive: 'google',
   google_docs: 'google',
+  google_calendar: 'google',
+  google_sheets: 'google',
   gmail: 'google',
+  google_meet: 'google',
 
   // Atlassian family
   jira: 'atlassian',

@@ -46,6 +46,12 @@ export interface ConnectorApp {
   connector_id?: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 export type NavSection =
   | 'newtask'
   | 'ingest'

@@ -102,6 +102,8 @@ function addProviderSpecificParams(url: URL, providerId: string) {
   switch (providerId) {
     case 'google_drive':
     case 'google_docs':
+    case 'google_calendar':
+    case 'google_sheets':
     case 'gmail':
       url.searchParams.set('access_type', 'offline');
       url.searchParams.set('prompt', 'consent');
