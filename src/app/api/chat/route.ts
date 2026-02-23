@@ -7,7 +7,23 @@ import { searchPlaces, getDirections, getPlaceDetails } from '@/lib/integrations
 import { webSearch, browseUrl } from '@/lib/integrations/web-browse';
 import type { ChatCompletionMessageParam, ChatCompletionTool } from 'openai/resources/chat/completions';
 
-const SYSTEM_PROMPT = `You are Orca, an intelligent AI assistant embedded in the Orca orchestration platform. You help users manage their knowledge bases, data pipelines, integrations, and agentic workflows. Be concise, helpful, and friendly.`;
+const SYSTEM_PROMPT = `You are Orca, an intelligent AI assistant embedded in the Orca orchestration platform. You help users manage their knowledge bases, data pipelines, integrations, and agentic workflows. Be concise, helpful, and friendly.
+
+You must emit internal business actions using the emit_event tool.
+Do not assume state changes are immediate.
+Do not directly modify database state.
+
+You have access to internal tools for querying business data.
+If a user asks about leads, you MUST use query_leads tool instead of asking where data is stored.
+
+When a user asks to send, broadcast, notify, or email leads:
+You MUST emit an internal domain event using the emit_event tool.
+Use event_type: "email.broadcast_requested"
+Payload must include:
+- subject (string)
+- body (string)
+Do NOT directly send emails.
+All email operations must go through event emission.`;
 
 const SEND_EMAIL_TOOL: ChatCompletionTool = {
   type: 'function',
@@ -151,6 +167,55 @@ const BROWSE_URL_TOOL: ChatCompletionTool = {
   },
 };
 
+const EMIT_EVENT_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'emit_event',
+    description: 'Emit internal Orca domain event',
+    parameters: {
+      type: 'object',
+      properties: {
+        event_type: { type: 'string', description: 'Event type in format domain.action (e.g., lead.created, workflow.triggered)' },
+        payload: { type: 'object', description: 'Event payload data' },
+      },
+      required: ['event_type', 'payload'],
+    },
+  },
+};
+
+const QUERY_LEADS_TOOL: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'query_leads',
+    description: 'Query leads from the database with optional filters. Use this to retrieve lead information.',
+    parameters: {
+      type: 'object',
+      properties: {
+        created_today: { type: 'boolean', description: 'Filter to only leads created today (UTC)' },
+        city: { type: 'string', description: 'Filter by city name' },
+        status: { type: 'string', description: 'Filter by lead status' },
+        limit: { type: 'number', description: 'Maximum number of leads to return (default 20)' },
+      },
+    },
+  },
+};
+
+interface ChatMessage {
+  id: string
+  session_id: string
+  role: 'user' | 'assistant' | 'tool'
+  content: string
+  tool_calls: unknown | null
+  created_at: string
+}
+
+interface ChatRequest {
+  message: string
+  tenant_id: string
+  project_id: string
+  session_id: string
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient();
@@ -160,183 +225,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { messages } = await req.json();
+    const body: ChatRequest = await req.json();
 
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: 'Messages array is required' }, { status: 400 });
+    // Validate required fields
+    if (!body.session_id || !body.tenant_id || !body.project_id) {
+      return NextResponse.json(
+        { error: 'Missing required fields: session_id, tenant_id, project_id' },
+        { status: 400 }
+      );
     }
 
-    // Check which integrations the user has connected
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: integrations } = await (supabase.from('integrations') as any)
-      .select('provider')
-      .eq('user_id', user.id)
-      .eq('status', 'connected');
-
-    const connectedProviders = ((integrations ?? []) as Array<{ provider: string }>).map(i => i.provider);
-    const hasGmail = connectedProviders.includes('gmail');
-    const hasGoogleMeet = connectedProviders.includes('google_meet');
-
-    // Build tools array based on connected integrations
-    const tools: ChatCompletionTool[] = [];
-    if (hasGmail) tools.push(SEND_EMAIL_TOOL);
-    if (hasGoogleMeet) {
-      tools.push(CREATE_MEETING_TOOL, LIST_MEETINGS_TOOL, GET_MEETING_DETAILS_TOOL);
-    }
-    // Maps and web tools are always available (free, no API keys)
-    tools.push(SEARCH_PLACES_TOOL, GET_DIRECTIONS_TOOL, GET_PLACE_DETAILS_TOOL);
-    tools.push(WEB_SEARCH_TOOL, BROWSE_URL_TOOL);
-
-    // Build system prompt with tool awareness
-    let systemPrompt = SYSTEM_PROMPT;
-    if (hasGmail) {
-      systemPrompt += '\n\nThe user has Gmail connected. You can send emails on their behalf using the send_email tool. When the user asks you to send an email, use the tool — do not say you cannot send emails.';
-    }
-    if (hasGoogleMeet) {
-      systemPrompt += '\n\nThe user has Google Meet connected. You can create meetings (create_meeting), list upcoming meetings (list_upcoming_meetings), and get meeting details (get_meeting_details). When the user asks about meetings, use the appropriate tool.';
-    }
-    systemPrompt += '\n\nYou can search for places (search_places), get directions between locations (get_directions), and get detailed place information (get_place_details). You can also search the web (web_search) and read web pages (browse_url). When the user asks about locations, places, directions, or wants to look something up online, use the appropriate tool. IMPORTANT: When calling location tools, always include the full city and country name in the query for accurate results (e.g., "restaurants near Thamel, Kathmandu, Nepal" not just "restaurants near Thamel").';
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-    const openaiMessages: ChatCompletionMessageParam[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
-    ];
-
-    // First streaming call
-    const stream = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      stream: true,
-      messages: openaiMessages,
-      ...(tools.length > 0 ? { tools } : {}),
-    });
-
-    // We need to collect tool calls if the model wants to use a tool
-    // while also streaming any text content
-    const encoder = new TextEncoder();
-    const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
-    let hasToolCall = false;
-    let textContent = '';
-
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            const choice = chunk.choices[0];
-            if (!choice) continue;
-
-            const delta = choice.delta;
-
-            // Stream text content immediately
-            if (delta.content) {
-              textContent += delta.content;
-              controller.enqueue(encoder.encode(delta.content));
-            }
-
-            // Collect tool call deltas
-            if (delta.tool_calls) {
-              hasToolCall = true;
-              for (const tc of delta.tool_calls) {
-                if (tc.index !== undefined) {
-                  // Ensure we have a slot for this tool call
-                  while (toolCalls.length <= tc.index) {
-                    toolCalls.push({ id: '', name: '', arguments: '' });
-                  }
-                  if (tc.id) toolCalls[tc.index].id = tc.id;
-                  if (tc.function?.name) toolCalls[tc.index].name = tc.function.name;
-                  if (tc.function?.arguments) toolCalls[tc.index].arguments += tc.function.arguments;
-                }
-              }
-            }
-          }
-
-          // If no tool calls, we're done
-          if (!hasToolCall) {
-            controller.close();
-            return;
-          }
-
-          // Execute tool calls and get results
-          const toolResults: ChatCompletionMessageParam[] = [];
-
-          // Add the assistant message with tool_calls to the conversation
-          const assistantToolMsg: ChatCompletionMessageParam = {
-            role: 'assistant',
-            content: textContent || null,
-            tool_calls: toolCalls.map(tc => ({
-              id: tc.id,
-              type: 'function' as const,
-              function: { name: tc.name, arguments: tc.arguments },
-            })),
-          };
-
-          for (const tc of toolCalls) {
-            let result: string;
-
-            if (tc.name === 'send_email') {
-              result = await executeSendEmail(user.id, tc.arguments);
-            } else if (tc.name === 'create_meeting') {
-              result = await executeCreateMeeting(user.id, tc.arguments);
-            } else if (tc.name === 'list_upcoming_meetings') {
-              result = await executeListMeetings(user.id, tc.arguments);
-            } else if (tc.name === 'get_meeting_details') {
-              result = await executeGetMeetingDetails(user.id, tc.arguments);
-            } else if (tc.name === 'search_places') {
-              result = await executeSearchPlaces(user.id, tc.arguments);
-            } else if (tc.name === 'get_directions') {
-              result = await executeGetDirections(user.id, tc.arguments);
-            } else if (tc.name === 'get_place_details') {
-              result = await executeGetPlaceDetails(user.id, tc.arguments);
-            } else if (tc.name === 'web_search') {
-              result = await executeWebSearch(tc.arguments);
-            } else if (tc.name === 'browse_url') {
-              result = await executeBrowseUrl(tc.arguments);
-            } else {
-              result = JSON.stringify({ error: `Unknown tool: ${tc.name}` });
-            }
-
-            toolResults.push({
-              role: 'tool',
-              tool_call_id: tc.id,
-              content: result,
-            });
-          }
-
-          // Follow-up streaming call with tool results
-          const followUpMessages: ChatCompletionMessageParam[] = [
-            ...openaiMessages,
-            assistantToolMsg,
-            ...toolResults,
-          ];
-
-          const followUpStream = await openai.chat.completions.create({
-            model: 'gpt-4o',
-            stream: true,
-            messages: followUpMessages,
-          });
-
-          for await (const chunk of followUpStream) {
-            const content = chunk.choices[0]?.delta?.content;
-            if (content) {
-              controller.enqueue(encoder.encode(content));
-            }
-          }
-
-          controller.close();
-        } catch (err) {
-          console.error('Stream error:', err);
-          controller.error(err);
-        }
-      },
-    });
-
-    return new Response(readable, {
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
+    return handleSessionChat(supabase, user.id, body);
   } catch (error) {
     console.error('Chat API error:', error);
     return NextResponse.json(
@@ -344,6 +243,313 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+async function handleSessionChat(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  userId: string,
+  body: ChatRequest
+) {
+  const { message, tenant_id, project_id, session_id } = body;
+
+  if (!message) {
+    return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  }
+
+  // 1. Validate user membership in tenant
+  const { data: membership, error: membershipError } = await supabase
+    .from('tenant_users')
+    .select('id')
+    .eq('tenant_id', tenant_id)
+    .eq('user_id', userId)
+    .single();
+
+  if (membershipError || !membership) {
+    return NextResponse.json(
+      { error: 'User is not a member of this tenant' },
+      { status: 403 }
+    );
+  }
+
+  // 2. Validate session belongs to tenant + project
+  const { data: session, error: sessionError } = await supabase
+    .from('chat_sessions')
+    .select('id, tenant_id, project_id')
+    .eq('id', session_id)
+    .eq('tenant_id', tenant_id)
+    .eq('project_id', project_id)
+    .single();
+
+  if (sessionError || !session) {
+    return NextResponse.json(
+      { error: 'Session not found or does not belong to tenant/project' },
+      { status: 400 }
+    );
+  }
+
+  // 3. Load previous messages for session ordered by created_at
+  const { data: previousMessages, error: messagesError } = await supabase
+    .from('chat_messages')
+    .select('id, role, content, tool_calls, created_at')
+    .eq('session_id', session_id)
+    .order('created_at', { ascending: true });
+
+  if (messagesError) {
+    console.error('Failed to load chat history:', messagesError);
+    return NextResponse.json(
+      { error: 'Failed to load chat history' },
+      { status: 500 }
+    );
+  }
+
+  // 4. Insert current user message
+  const { error: userMsgError } = await supabase
+    .from('chat_messages')
+    .insert({
+      session_id,
+      role: 'user',
+      content: message,
+    });
+
+  if (userMsgError) {
+    console.error('Failed to save user message:', userMsgError);
+    return NextResponse.json(
+      { error: 'Failed to save user message' },
+      { status: 500 }
+    );
+  }
+
+  // Check which integrations the user has connected
+  const { data: integrations } = await supabase
+    .from('integrations')
+    .select('provider')
+    .eq('user_id', userId)
+    .eq('status', 'connected');
+
+  const connectedProviders = ((integrations ?? []) as Array<{ provider: string }>).map(i => i.provider);
+  const hasGmail = connectedProviders.includes('gmail');
+  const hasGoogleMeet = connectedProviders.includes('google_meet');
+
+  // Build tools array based on connected integrations
+  const tools: ChatCompletionTool[] = [];
+  // Email is handled via event-driven flow (email.broadcast_requested)
+  // SEND_EMAIL_TOOL is intentionally NOT exposed to GPT
+  if (hasGoogleMeet) {
+    tools.push(CREATE_MEETING_TOOL, LIST_MEETINGS_TOOL, GET_MEETING_DETAILS_TOOL);
+  }
+  tools.push(SEARCH_PLACES_TOOL, GET_DIRECTIONS_TOOL, GET_PLACE_DETAILS_TOOL);
+  tools.push(WEB_SEARCH_TOOL, BROWSE_URL_TOOL);
+  // Always include internal tools
+  tools.push(EMIT_EVENT_TOOL);
+  tools.push(QUERY_LEADS_TOOL);
+
+  // Build system prompt with tool awareness
+  let systemPrompt = SYSTEM_PROMPT;
+  if (hasGmail) {
+    systemPrompt += '\n\nThe user has Gmail connected. Email delivery will be handled asynchronously by the Orca event engine.';
+  }
+  if (hasGoogleMeet) {
+    systemPrompt += '\n\nThe user has Google Meet connected. You can create meetings, list upcoming meetings, and get meeting details.';
+  }
+  systemPrompt += '\n\nYou can search for places, get directions, and get detailed place information. You can also search the web and read web pages.';
+
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  // Build OpenAI messages from history + current message
+  const openaiMessages: ChatCompletionMessageParam[] = [
+    { role: 'system', content: systemPrompt },
+  ];
+
+  // Add previous messages
+  for (const msg of (previousMessages || []) as ChatMessage[]) {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      openaiMessages.push({
+        role: msg.role,
+        content: msg.content,
+      });
+    }
+    // Note: tool messages would need special handling if we want to replay tool calls
+  }
+
+  // Add current user message
+  openaiMessages.push({ role: 'user', content: message });
+
+  // 5. Call OpenAI with full conversation
+  const stream = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    stream: true,
+    messages: openaiMessages,
+    ...(tools.length > 0 ? { tools } : {}),
+  });
+
+  const encoder = new TextEncoder();
+  const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
+  let hasToolCall = false;
+  let textContent = '';
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const chunk of stream) {
+          const choice = chunk.choices[0];
+          if (!choice) continue;
+
+          const delta = choice.delta;
+
+          if (delta.content) {
+            textContent += delta.content;
+            controller.enqueue(encoder.encode(delta.content));
+          }
+
+          if (delta.tool_calls) {
+            hasToolCall = true;
+            for (const tc of delta.tool_calls) {
+              if (tc.index !== undefined) {
+                while (toolCalls.length <= tc.index) {
+                  toolCalls.push({ id: '', name: '', arguments: '' });
+                }
+                if (tc.id) toolCalls[tc.index].id = tc.id;
+                if (tc.function?.name) toolCalls[tc.index].name = tc.function.name;
+                if (tc.function?.arguments) toolCalls[tc.index].arguments += tc.function.arguments;
+              }
+            }
+          }
+        }
+
+        if (!hasToolCall) {
+          // 6. Persist assistant response
+          await supabase
+            .from('chat_messages')
+            .insert({
+              session_id,
+              role: 'assistant',
+              content: textContent,
+            });
+
+          controller.close();
+          return;
+        }
+
+        // Execute tool calls
+        const toolResults: ChatCompletionMessageParam[] = [];
+
+        const assistantToolMsg: ChatCompletionMessageParam = {
+          role: 'assistant',
+          content: textContent || null,
+          tool_calls: toolCalls.map(tc => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.name, arguments: tc.arguments },
+          })),
+        };
+
+        // 6a. Persist assistant message with tool_calls IMMEDIATELY (before execution)
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id,
+            role: 'assistant',
+            content: textContent || null,
+            tool_calls: toolCalls.map(tc => ({
+              id: tc.id,
+              type: 'function',
+              function: {
+                name: tc.name,
+                arguments: tc.arguments,
+              },
+            })),
+          });
+
+        // 6b. Execute each tool and persist results immediately
+        for (const tc of toolCalls) {
+          let result: string;
+
+          if (tc.name === 'send_email') {
+            result = await executeSendEmail(userId, tc.arguments);
+          } else if (tc.name === 'create_meeting') {
+            result = await executeCreateMeeting(userId, tc.arguments);
+          } else if (tc.name === 'list_upcoming_meetings') {
+            result = await executeListMeetings(userId, tc.arguments);
+          } else if (tc.name === 'get_meeting_details') {
+            result = await executeGetMeetingDetails(userId, tc.arguments);
+          } else if (tc.name === 'search_places') {
+            result = await executeSearchPlaces(userId, tc.arguments);
+          } else if (tc.name === 'get_directions') {
+            result = await executeGetDirections(userId, tc.arguments);
+          } else if (tc.name === 'get_place_details') {
+            result = await executeGetPlaceDetails(userId, tc.arguments);
+          } else if (tc.name === 'web_search') {
+            result = await executeWebSearch(tc.arguments);
+          } else if (tc.name === 'browse_url') {
+            result = await executeBrowseUrl(tc.arguments);
+          } else if (tc.name === 'emit_event') {
+            result = await executeEmitEvent(supabase, tenant_id, project_id, tc.arguments);
+          } else if (tc.name === 'query_leads') {
+            result = await executeQueryLeads(supabase, tenant_id, project_id, tc.arguments);
+          } else {
+            result = JSON.stringify({ error: `Unknown tool: ${tc.name}` });
+          }
+
+          // Persist tool result immediately after execution
+          await supabase
+            .from('chat_messages')
+            .insert({
+              session_id,
+              role: 'tool',
+              content: result,
+              tool_calls: { tool_call_id: tc.id },
+            });
+
+          toolResults.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            content: result,
+          });
+        }
+
+        // Follow-up streaming call with tool results
+        const followUpMessages: ChatCompletionMessageParam[] = [
+          ...openaiMessages,
+          assistantToolMsg,
+          ...toolResults,
+        ];
+
+        const followUpStream = await openai.chat.completions.create({
+          model: 'gpt-4o',
+          stream: true,
+          messages: followUpMessages,
+        });
+
+        let followUpContent = '';
+        for await (const chunk of followUpStream) {
+          const content = chunk.choices[0]?.delta?.content;
+          if (content) {
+            followUpContent += content;
+            controller.enqueue(encoder.encode(content));
+          }
+        }
+
+        // 6c. Persist final assistant response (no tool_calls)
+        await supabase
+          .from('chat_messages')
+          .insert({
+            session_id,
+            role: 'assistant',
+            content: followUpContent,
+          });
+
+        controller.close();
+      } catch (err) {
+        console.error('Stream error:', err);
+        controller.error(err);
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+  });
 }
 
 async function executeSendEmail(userId: string, argsJson: string): Promise<string> {
@@ -512,5 +718,115 @@ async function executeBrowseUrl(argsJson: string): Promise<string> {
   } catch (err) {
     console.error('browse_url tool error:', err);
     return JSON.stringify({ error: 'Failed to browse URL' });
+  }
+}
+
+async function executeEmitEvent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  tenant_id: string,
+  project_id: string,
+  argsJson: string
+): Promise<string> {
+  try {
+    const args = JSON.parse(argsJson);
+    const { event_type, payload } = args;
+
+    if (!event_type || !payload) {
+      console.error('[emit_event] Validation failed:', { event_type, payload });
+      return JSON.stringify({ error: 'Missing required fields: event_type, payload' });
+    }
+
+    // Validate event_type format: domain.action (e.g., lead.created, workflow.triggered)
+    const eventTypeRegex = /^[a-z]+\.[a-z_]+$/;
+    if (!eventTypeRegex.test(event_type)) {
+      console.error('[emit_event] Validation failed:', { event_type, payload });
+      return JSON.stringify({
+        error: 'Invalid event_type format. Must match pattern: domain.action (e.g., lead.created, workflow.triggered)'
+      });
+    }
+
+    console.log('[emit_event] Inserting event:', { event_type, tenant_id, project_id });
+
+    // Insert into event_store
+    const { error: insertError } = await supabase
+      .from('event_store')
+      .insert({
+        tenant_id,
+        project_id,
+        event_type,
+        payload,
+        status: 'pending',
+        idempotency_key: crypto.randomUUID(),
+        chain_depth: 0,
+      });
+
+    if (insertError) {
+      console.error('emit_event insert error:', insertError);
+      return JSON.stringify({ error: 'Failed to emit event' });
+    }
+
+    // Do NOT expose event_id in the response
+    return JSON.stringify({
+      success: true,
+      message: 'Event accepted for processing.'
+    });
+  } catch (err) {
+    console.error('emit_event tool error:', err);
+    return JSON.stringify({ error: 'Failed to emit event' });
+  }
+}
+
+async function executeQueryLeads(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  tenant_id: string,
+  project_id: string,
+  argsJson: string
+): Promise<string> {
+  try {
+    const args = JSON.parse(argsJson);
+    const { created_today, city, status, limit } = args;
+
+    const queryLimit = typeof limit === 'number' && limit > 0 ? limit : 20;
+
+    // Build query - ALWAYS filter by tenant_id and project_id
+    let query = supabase
+      .from('leads')
+      .select('*')
+      .eq('tenant_id', tenant_id)
+      .eq('project_id', project_id);
+
+    // Filter by created_today
+    if (created_today === true) {
+      const todayStart = new Date();
+      todayStart.setUTCHours(0, 0, 0, 0);
+      query = query.gte('created_at', todayStart.toISOString());
+    }
+
+    // Filter by city
+    if (typeof city === 'string' && city.trim()) {
+      query = query.ilike('city', `%${city.trim()}%`);
+    }
+
+    // Filter by status
+    if (typeof status === 'string' && status.trim()) {
+      query = query.eq('status', status.trim());
+    }
+
+    // Apply limit and order
+    query = query.order('created_at', { ascending: false }).limit(queryLimit);
+
+    const { data: leads, error } = await query;
+
+    if (error) {
+      console.error('query_leads error:', error);
+      return JSON.stringify({ error: 'Failed to query leads' });
+    }
+
+    return JSON.stringify({ success: true, leads: leads || [] });
+  } catch (err) {
+    console.error('query_leads tool error:', err);
+    return JSON.stringify({ error: 'Failed to query leads' });
   }
 }
