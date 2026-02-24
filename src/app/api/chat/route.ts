@@ -437,7 +437,7 @@ async function handleSessionChat(
         }
 
         // Validate email intent received tool_calls
-        if (emailIntent && finishReason !== 'tool_calls') {
+        if (emailIntent && !hasToolCall) {
           console.error('[STREAM ERROR] Forced emit_event but model did not return tool_calls', {
             finishReason,
             hasToolCall,
@@ -761,23 +761,37 @@ async function executeEmitEvent(
 ): Promise<string> {
   try {
     const args = JSON.parse(argsJson);
-    const { event_type, payload } = args;
+    const { event_type, payload, ...rest } = args;
 
-    if (!event_type || !payload) {
-      console.error('[emit_event] Validation failed:', { event_type, payload });
+    // Normalize payload: accept both nested { payload: { subject, body } } and flat { subject, body }
+    let normalizedPayload: Record<string, unknown>;
+    if (payload && typeof payload === 'object') {
+      // Structure A: { event_type, payload: { subject, body } }
+      normalizedPayload = payload;
+    } else if (Object.keys(rest).length > 0) {
+      // Structure B: { event_type, subject, body }
+      normalizedPayload = rest;
+    } else {
+      console.error('[emit_event] Validation failed:', { event_type, payload, rest });
       return JSON.stringify({ error: 'Missing required fields: event_type, payload' });
+    }
+
+    if (!event_type) {
+      console.error('[emit_event] Validation failed: missing event_type');
+      return JSON.stringify({ error: 'Missing required field: event_type' });
     }
 
     // Validate event_type format: domain.action (e.g., lead.created, workflow.triggered)
     const eventTypeRegex = /^[a-z]+\.[a-z_]+$/;
     if (!eventTypeRegex.test(event_type)) {
-      console.error('[emit_event] Validation failed:', { event_type, payload });
+      console.error('[emit_event] Validation failed:', { event_type, normalizedPayload });
       return JSON.stringify({
         error: 'Invalid event_type format. Must match pattern: domain.action (e.g., lead.created, workflow.triggered)'
       });
     }
 
     console.log('[emit_event] Inserting event:', { event_type, tenant_id, project_id });
+    console.log('[EMIT_EVENT INSERT ATTEMPT]', { tenant_id, project_id, event_type, payload: normalizedPayload });
 
     // Insert into event_store
     const { error: insertError } = await supabase
@@ -786,11 +800,13 @@ async function executeEmitEvent(
         tenant_id,
         project_id,
         event_type,
-        payload,
+        payload: normalizedPayload,
         status: 'pending',
         idempotency_key: crypto.randomUUID(),
         chain_depth: 0,
       });
+
+    console.log('[EMIT_EVENT INSERT RESULT]', { insertError });
 
     if (insertError) {
       console.error('emit_event insert error:', insertError);

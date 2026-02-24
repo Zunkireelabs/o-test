@@ -117,10 +117,10 @@ export function ProviderSetupModal({
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
                   i < currentStep
-                    ? 'bg-emerald-100 text-emerald-700'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
                     : i === currentStep
-                    ? 'bg-zinc-900 text-white'
-                    : 'bg-zinc-100 text-zinc-400'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
                 }`}
               >
                 {i < currentStep ? (
@@ -132,7 +132,7 @@ export function ProviderSetupModal({
               {i < totalSteps - 1 && (
                 <div
                   className={`h-px w-6 ${
-                    i < currentStep ? 'bg-emerald-300' : 'bg-zinc-200'
+                    i < currentStep ? 'bg-emerald-300 dark:bg-emerald-600' : 'bg-border'
                   }`}
                 />
               )}
@@ -143,10 +143,10 @@ export function ProviderSetupModal({
         {/* Step content */}
         <div className="space-y-4">
           <div>
-            <h3 className="font-medium text-zinc-900 text-sm tracking-[-0.01em]">
+            <h3 className="font-medium text-foreground text-sm tracking-[-0.01em]">
               {step.title}
             </h3>
-            <p className="text-sm text-zinc-500 mt-1 tracking-[-0.01em]">
+            <p className="text-sm text-muted-foreground mt-1 tracking-[-0.01em]">
               {step.description}
             </p>
             {step.link && (
@@ -166,9 +166,9 @@ export function ProviderSetupModal({
           {(step.title.toLowerCase().includes('redirect') ||
             step.title.toLowerCase().includes('callback')) && callbackUrl && (
             <div className="space-y-1.5">
-              <Label className="text-xs text-zinc-500">{instructions.callbackUrlNote}</Label>
+              <Label className="text-xs text-muted-foreground">{instructions.callbackUrlNote}</Label>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs bg-zinc-100 px-3 py-2 rounded-md text-zinc-700 break-all">
+                <code className="flex-1 text-xs bg-muted px-3 py-2 rounded-md text-foreground break-all">
                   {callbackUrl}
                 </code>
                 <Button

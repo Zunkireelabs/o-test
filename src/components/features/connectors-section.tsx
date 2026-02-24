@@ -174,8 +174,8 @@ export function ConnectorsSection() {
   return (
     <div className="max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Integrations</h1>
-        <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
+        <h1 className="text-2xl font-semibold text-foreground tracking-[-0.025em]">Integrations</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 tracking-[-0.01em]">
           Connect your favorite apps to automatically sync data.
         </p>
       </div>
@@ -183,7 +183,7 @@ export function ConnectorsSection() {
       {/* Notification */}
       {notification && (
         <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium tracking-[-0.01em] ${
-          notification.type === 'success' ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-800'
+          notification.type === 'success' ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200' : 'bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200'
         }`}>
           {notification.type === 'success' ? (
             <CheckCircle className="w-5 h-5" />
@@ -221,14 +221,14 @@ export function ConnectorsSection() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
         <div className="space-y-8">
           {/* Connected Apps */}
           {connectedProviders.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-zinc-900 mb-4 tracking-[-0.02em]">Connected</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4 tracking-[-0.02em]">Connected</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {connectedProviders.map((provider) => (
                   <ProviderCard
@@ -247,7 +247,7 @@ export function ConnectorsSection() {
           {/* Available Apps */}
           {availableProviders.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-zinc-900 mb-4 tracking-[-0.02em]">Available</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4 tracking-[-0.02em]">Available</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {availableProviders.map((provider) => (
                   <ProviderCard
@@ -264,7 +264,7 @@ export function ConnectorsSection() {
           )}
 
           {filteredProviders.length === 0 && (
-            <div className="text-center py-12 text-zinc-500 text-sm tracking-[-0.01em]">
+            <div className="text-center py-12 text-muted-foreground text-sm tracking-[-0.01em]">
               No apps found matching your criteria.
             </div>
           )}
@@ -302,7 +302,7 @@ function ProviderCard({
     <Card>
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
             {provider.icon.startsWith('http') ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={provider.icon} alt={provider.displayName} className="w-8 h-8" />
@@ -312,12 +312,12 @@ function ProviderCard({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-medium text-zinc-900 tracking-[-0.01em]">{provider.displayName}</h3>
+              <h3 className="font-medium text-foreground tracking-[-0.01em]">{provider.displayName}</h3>
               {connected && (
                 <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">Connected</Badge>
               )}
             </div>
-            <p className="text-sm text-zinc-500 mt-0.5 line-clamp-2 tracking-[-0.01em]">{provider.description}</p>
+            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2 tracking-[-0.01em]">{provider.description}</p>
             <div className="flex items-center gap-2 mt-3">
               {connected ? (
                 <Button

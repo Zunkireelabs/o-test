@@ -67,7 +67,7 @@ export function WidgetConfigSection() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -75,8 +75,8 @@ export function WidgetConfigSection() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Widget Configuration</h1>
-        <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
+        <h1 className="text-2xl font-semibold text-foreground tracking-[-0.025em]">Widget Configuration</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 tracking-[-0.01em]">
           Customize how your chat widget looks and behaves.
         </p>
       </div>
@@ -118,7 +118,7 @@ export function WidgetConfigSection() {
                 id="primaryColor"
                 value={config.primary_color}
                 onChange={(e) => setConfig({ ...config, primary_color: e.target.value })}
-                className="w-10 h-10 rounded-lg cursor-pointer border border-zinc-200"
+                className="w-10 h-10 rounded-lg cursor-pointer border border-border"
               />
               <Input
                 value={config.primary_color}
@@ -144,8 +144,8 @@ export function WidgetConfigSection() {
             <div
               className={cn(
                 'flex items-center gap-2 p-3 rounded-xl text-sm font-medium tracking-[-0.01em]',
-                status === 'success' && 'bg-emerald-50 text-emerald-700',
-                status === 'error' && 'bg-red-50 text-red-700'
+                status === 'success' && 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
+                status === 'error' && 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
               )}
             >
               {status === 'success' ? <Check className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}

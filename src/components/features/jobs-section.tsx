@@ -48,7 +48,7 @@ export function JobsSection() {
       case 'failed':
         return 'bg-red-100 text-red-700';
       default:
-        return 'bg-zinc-100 text-zinc-700';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -56,8 +56,8 @@ export function JobsSection() {
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 tracking-[-0.025em]">Ingestion Jobs</h1>
-          <p className="text-sm text-zinc-500 mt-1.5 tracking-[-0.01em]">
+          <h1 className="text-2xl font-semibold text-foreground tracking-[-0.025em]">Ingestion Jobs</h1>
+          <p className="text-sm text-muted-foreground mt-1.5 tracking-[-0.01em]">
             Track the status of your data ingestion jobs.
           </p>
         </div>
@@ -75,14 +75,14 @@ export function JobsSection() {
         <CardContent className="p-0">
           {loading && jobs.length === 0 ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : jobs.length === 0 ? (
-            <div className="text-center py-12 text-zinc-500 text-sm tracking-[-0.01em]">
+            <div className="text-center py-12 text-muted-foreground text-sm tracking-[-0.01em]">
               No ingestion jobs yet. Start by ingesting some data.
             </div>
           ) : (
-            <div className="divide-y divide-zinc-100">
+            <div className="divide-y divide-border">
               {jobs.map((job) => (
                 <div key={job.id} className="flex items-center justify-between p-4">
                   <div className="flex-1 min-w-0">
@@ -94,8 +94,8 @@ export function JobsSection() {
                         {job.status}
                       </Badge>
                     </div>
-                    <p className="text-sm text-zinc-900 mt-1 truncate tracking-[-0.01em]">{job.source}</p>
-                    <p className="text-xs text-zinc-500 mt-0.5 tracking-[-0.01em]">
+                    <p className="text-sm text-foreground mt-1 truncate tracking-[-0.01em]">{job.source}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 tracking-[-0.01em]">
                       {job.chunk_count} chunks &middot; {new Date(job.created_at).toLocaleString()}
                     </p>
                   </div>

@@ -44,10 +44,10 @@ export function Header() {
     .slice(0, 2) || 'U';
 
   return (
-    <header className="h-14 px-6 flex items-center justify-end border-b border-zinc-100">
+    <header className="h-14 px-6 flex items-center justify-end border-b border-border bg-background">
       <div className="flex items-center gap-4">
         {/* API Status */}
-        <div className="flex items-center gap-2 text-sm text-zinc-500 tracking-[-0.01em]">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground tracking-[-0.01em]">
           <div
             className={cn(
               'w-2 h-2 rounded-full',
@@ -67,7 +67,7 @@ export function Header() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-3 text-[13px] font-medium text-zinc-700 border-zinc-200 hover:bg-[#EFEFF0] hover:text-zinc-900 rounded-[10px]"
+          className="h-8 px-3 text-[13px] font-medium text-muted-foreground border-border hover:bg-accent hover:text-foreground rounded-[10px]"
         >
           <MessageSquare className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.75} />
           Feedback
@@ -77,7 +77,7 @@ export function Header() {
         <Button
           variant="outline"
           size="sm"
-          className="h-8 px-3 text-[13px] font-medium text-zinc-700 border-zinc-200 hover:bg-[#EFEFF0] hover:text-zinc-900 rounded-[10px]"
+          className="h-8 px-3 text-[13px] font-medium text-muted-foreground border-border hover:bg-accent hover:text-foreground rounded-[10px]"
         >
           <MessageCircle className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.75} />
           Talk to Kiree
@@ -86,9 +86,9 @@ export function Header() {
         {/* Profile Dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 p-1 rounded-full hover:bg-[#EFEFF0] transition-colors">
+            <button className="flex items-center gap-2 p-1 rounded-full hover:bg-accent transition-colors">
               <Avatar className="w-8 h-8 cursor-pointer">
-                <AvatarFallback className="bg-zinc-200 text-zinc-600 text-sm font-medium">
+                <AvatarFallback className="bg-muted text-muted-foreground text-sm font-medium">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -97,10 +97,10 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             {/* User Info */}
             <div className="px-3 py-2">
-              <p className="text-sm font-medium text-zinc-900 tracking-[-0.01em]">
+              <p className="text-sm font-medium text-foreground tracking-[-0.01em]">
                 {user?.name || 'User'}
               </p>
-              <p className="text-xs text-zinc-500 tracking-[-0.01em]">
+              <p className="text-xs text-muted-foreground tracking-[-0.01em]">
                 {user?.email || ''}
               </p>
             </div>

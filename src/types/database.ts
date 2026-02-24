@@ -4,212 +4,848 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   public: {
     Tables: {
-      profiles: {
+      agent_subscriptions: {
         Row: {
-          id: string;
-          email: string;
-          name: string | null;
-          avatar_url: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          agent_id: string
+          created_at: string | null
+          event_type: string
+          id: string
+          tenant_id: string
+        }
         Insert: {
-          id: string;
-          email: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
+          agent_id: string
+          created_at?: string | null
+          event_type: string
+          id?: string
+          tenant_id: string
+        }
         Update: {
-          id?: string;
-          email?: string;
-          name?: string | null;
-          avatar_url?: string | null;
-          updated_at?: string;
-        };
-      };
+          agent_id?: string
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_subscriptions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          description: string | null;
-          type: 'task' | 'orchestrator' | 'connector';
-          config: Json;
-          status: 'active' | 'inactive' | 'error';
-          created_at: string;
-          updated_at: string;
-        };
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          status: Database["public"]["Enums"]["agent_status"] | null
+          tenant_id: string | null
+          type: Database["public"]["Enums"]["agent_type"]
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          description?: string | null;
-          type: 'task' | 'orchestrator' | 'connector';
-          config?: Json;
-          status?: 'active' | 'inactive' | 'error';
-          created_at?: string;
-          updated_at?: string;
-        };
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["agent_status"] | null
+          tenant_id?: string | null
+          type?: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          name?: string;
-          description?: string | null;
-          type?: 'task' | 'orchestrator' | 'connector';
-          config?: Json;
-          status?: 'active' | 'inactive' | 'error';
-          updated_at?: string;
-        };
-      };
-      workflows: {
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["agent_status"] | null
+          tenant_id?: string | null
+          type?: Database["public"]["Enums"]["agent_type"]
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
         Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          description: string | null;
-          steps: Json;
-          status: 'draft' | 'active' | 'paused' | 'archived';
-          created_at: string;
-          updated_at: string;
-        };
+          content: string
+          created_at: string | null
+          id: string
+          role: string
+          session_id: string
+          tool_calls: Json | null
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          description?: string | null;
-          steps?: Json;
-          status?: 'draft' | 'active' | 'paused' | 'archived';
-          created_at?: string;
-          updated_at?: string;
-        };
+          content: string
+          created_at?: string | null
+          id?: string
+          role: string
+          session_id: string
+          tool_calls?: Json | null
+        }
         Update: {
-          name?: string;
-          description?: string | null;
-          steps?: Json;
-          status?: 'draft' | 'active' | 'paused' | 'archived';
-          updated_at?: string;
-        };
-      };
-      knowledge_bases: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          role?: string
+          session_id?: string
+          tool_calls?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
         Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          description: string | null;
-          source_type: 'file' | 'url' | 'api' | 'manual';
-          config: Json;
-          document_count: number;
-          status: 'active' | 'syncing' | 'error';
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string | null
+          id: string
+          project_id: string
+          tenant_id: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          description?: string | null;
-          source_type: 'file' | 'url' | 'api' | 'manual';
-          config?: Json;
-          document_count?: number;
-          status?: 'active' | 'syncing' | 'error';
-          created_at?: string;
-          updated_at?: string;
-        };
+          created_at?: string | null
+          id?: string
+          project_id: string
+          tenant_id: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          name?: string;
-          description?: string | null;
-          source_type?: 'file' | 'url' | 'api' | 'manual';
-          config?: Json;
-          document_count?: number;
-          status?: 'active' | 'syncing' | 'error';
-          updated_at?: string;
-        };
-      };
+          created_at?: string | null
+          id?: string
+          project_id?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_sessions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_store: {
+        Row: {
+          chain_depth: number | null
+          created_at: string | null
+          event_type: string
+          id: string
+          idempotency_key: string
+          payload: Json
+          processed_at: string | null
+          processing_started_at: string | null
+          project_id: string
+          source_agent_id: string | null
+          status: string | null
+          tenant_id: string
+        }
+        Insert: {
+          chain_depth?: number | null
+          created_at?: string | null
+          event_type: string
+          id?: string
+          idempotency_key: string
+          payload: Json
+          processed_at?: string | null
+          processing_started_at?: string | null
+          project_id: string
+          source_agent_id?: string | null
+          status?: string | null
+          tenant_id: string
+        }
+        Update: {
+          chain_depth?: number | null
+          created_at?: string | null
+          event_type?: string
+          id?: string
+          idempotency_key?: string
+          payload?: Json
+          processed_at?: string | null
+          processing_started_at?: string | null
+          project_id?: string
+          source_agent_id?: string | null
+          status?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_store_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_store_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrations: {
         Row: {
-          id: string;
-          user_id: string;
-          provider: string;
-          name: string;
-          config: Json;
-          credentials: Json;
-          status: 'connected' | 'disconnected' | 'error';
-          created_at: string;
-          updated_at: string;
-        };
+          config: Json | null
+          created_at: string | null
+          credentials: Json | null
+          id: string
+          name: string
+          project_id: string | null
+          provider: string
+          status: Database["public"]["Enums"]["integration_status"] | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          provider: string;
-          name: string;
-          config?: Json;
-          credentials?: Json;
-          status?: 'connected' | 'disconnected' | 'error';
-          created_at?: string;
-          updated_at?: string;
-        };
+          config?: Json | null
+          created_at?: string | null
+          credentials?: Json | null
+          id?: string
+          name: string
+          project_id?: string | null
+          provider: string
+          status?: Database["public"]["Enums"]["integration_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          provider?: string;
-          name?: string;
-          config?: Json;
-          credentials?: Json;
-          status?: 'connected' | 'disconnected' | 'error';
-          updated_at?: string;
-        };
-      };
+          config?: Json | null
+          created_at?: string | null
+          credentials?: Json | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          provider?: string
+          status?: Database["public"]["Enums"]["integration_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integrations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      knowledge_bases: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          description: string | null
+          document_count: number | null
+          id: string
+          name: string
+          project_id: string | null
+          source_type: Database["public"]["Enums"]["source_type"]
+          status: Database["public"]["Enums"]["kb_status"] | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          document_count?: number | null
+          id?: string
+          name: string
+          project_id?: string | null
+          source_type?: Database["public"]["Enums"]["source_type"]
+          status?: Database["public"]["Enums"]["kb_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          description?: string | null
+          document_count?: number | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          source_type?: Database["public"]["Enums"]["source_type"]
+          status?: Database["public"]["Enums"]["kb_status"] | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_bases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_bases_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "knowledge_bases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          company: string | null
+          created_at: string | null
+          email: string
+          event_id: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          project_id: string
+          status: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string | null
+          email: string
+          event_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          project_id: string
+          status?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company?: string | null
+          created_at?: string | null
+          email?: string
+          event_id?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          project_id?: string
+          status?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          id: string
+          name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          status: string | null
+          tenant_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          status?: string | null
+          tenant_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          status?: string | null
+          tenant_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_credentials: {
         Row: {
-          id: string;
-          user_id: string;
-          credential_key: string;
-          client_id: string;
-          client_secret: string;
-          created_at: string;
-          updated_at: string;
-        };
+          client_id: string
+          client_secret: string
+          created_at: string | null
+          credential_key: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          credential_key: string;
-          client_id: string;
-          client_secret: string;
-          created_at?: string;
-          updated_at?: string;
-        };
+          client_id: string
+          client_secret: string
+          created_at?: string | null
+          credential_key: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
         Update: {
-          credential_key?: string;
-          client_id?: string;
-          client_secret?: string;
-          updated_at?: string;
-        };
-      };
-    };
+          client_id?: string
+          client_secret?: string
+          created_at?: string | null
+          credential_key?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_credentials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          config: Json | null
+          created_at: string | null
+          hmac_secret: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          config?: Json | null
+          created_at?: string | null
+          hmac_secret: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          config?: Json | null
+          created_at?: string | null
+          hmac_secret?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
+      workflows: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          status: Database["public"]["Enums"]["workflow_status"] | null
+          steps: Json | null
+          tenant_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["workflow_status"] | null
+          steps?: Json | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["workflow_status"] | null
+          steps?: Json | null
+          tenant_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflows_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflows_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflows_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
+    }
     Enums: {
-      agent_type: 'task' | 'orchestrator' | 'connector';
-      agent_status: 'active' | 'inactive' | 'error';
-      workflow_status: 'draft' | 'active' | 'paused' | 'archived';
-      source_type: 'file' | 'url' | 'api' | 'manual';
-      kb_status: 'active' | 'syncing' | 'error';
-      integration_status: 'connected' | 'disconnected' | 'error';
-    };
-  };
+      agent_status: "active" | "inactive" | "error"
+      agent_type: "task" | "orchestrator" | "connector"
+      integration_status: "connected" | "disconnected" | "error"
+      kb_status: "active" | "syncing" | "error"
+      source_type: "file" | "url" | "api" | "manual"
+      workflow_status: "draft" | "active" | "paused" | "archived"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
 
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      agent_status: ["active", "inactive", "error"],
+      agent_type: ["task", "orchestrator", "connector"],
+      integration_status: ["connected", "disconnected", "error"],
+      kb_status: ["active", "syncing", "error"],
+      source_type: ["file", "url", "api", "manual"],
+      workflow_status: ["draft", "active", "paused", "archived"],
+    },
+  },
+} as const
+
 // Convenience types
-export type Profile = Database['public']['Tables']['profiles']['Row'];
-export type Agent = Database['public']['Tables']['agents']['Row'];
-export type Workflow = Database['public']['Tables']['workflows']['Row'];
-export type KnowledgeBase = Database['public']['Tables']['knowledge_bases']['Row'];
-export type Integration = Database['public']['Tables']['integrations']['Row'];
-export type ProviderCredential = Database['public']['Tables']['provider_credentials']['Row'];
+export type Profile = Tables<"profiles">
+export type Agent = Tables<"agents">
+export type Workflow = Tables<"workflows">
+export type KnowledgeBase = Tables<"knowledge_bases">
+export type Integration = Tables<"integrations">
+export type ProviderCredential = Tables<"provider_credentials">
+
+// Multi-tenant types
+export type Tenant = Tables<"tenants">
+export type TenantUser = Tables<"tenant_users">
+export type Project = Tables<"projects">
+export type EventStoreRecord = Tables<"event_store">
+export type AgentSubscription = Tables<"agent_subscriptions">
+export type Lead = Tables<"leads">
+
+// Chat types
+export type ChatSession = Tables<"chat_sessions">
+export type ChatMessage = Tables<"chat_messages">

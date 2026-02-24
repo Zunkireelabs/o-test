@@ -64,10 +64,9 @@ export function Sidebar() {
   return (
     <motion.aside
       className={cn(
-        'h-screen flex flex-col flex-shrink-0 border-r border-zinc-100',
+        'h-screen flex flex-col flex-shrink-0 border-r border-sidebar-border bg-sidebar',
         'transition-all duration-200 ease-in-out'
       )}
-      style={{ backgroundColor: '#FAFAFA' }}
       animate={{ width: sidebarCollapsed ? 68 : 240 }}
     >
       {/* Header */}
@@ -84,7 +83,7 @@ export function Sidebar() {
             className="flex-shrink-0"
           />
           <motion.span
-            className="text-xl font-semibold text-zinc-900 whitespace-nowrap tracking-[-0.02em]"
+            className="text-xl font-semibold text-sidebar-foreground whitespace-nowrap tracking-[-0.02em]"
             animate={{ opacity: sidebarCollapsed ? 0 : 1, width: sidebarCollapsed ? 0 : 'auto' }}
           >
             orca
@@ -93,7 +92,7 @@ export function Sidebar() {
         {!sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-zinc-400 hover:bg-[#EFEFF0] hover:text-zinc-700 transition-colors"
+            className="p-2 rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors"
             title="Collapse sidebar"
           >
             <PanelLeftClose className="w-4 h-4" strokeWidth={1.75} />
@@ -102,7 +101,7 @@ export function Sidebar() {
         {sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="p-2 rounded-md text-zinc-400 hover:bg-[#EFEFF0] hover:text-zinc-700 transition-colors absolute left-4"
+            className="p-2 rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground transition-colors absolute left-4"
             title="Expand sidebar"
           >
             <PanelLeft className="w-4 h-4" strokeWidth={1.75} />
@@ -115,18 +114,18 @@ export function Sidebar() {
         <div className="px-3 pb-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="w-full flex items-center gap-3 px-3 py-2 bg-white border border-zinc-200 rounded-[10px] hover:bg-[#EFEFF0] transition-colors">
+              <button className="w-full flex items-center gap-3 px-3 py-2 bg-background border border-border rounded-[10px] hover:bg-sidebar-accent transition-colors">
                 {/* Org Icon */}
                 <div
                   className="w-5 h-5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: currentOrg.color }}
                 />
                 {/* Org Name */}
-                <span className="flex-1 text-left text-[14px] font-medium text-zinc-900 tracking-[-0.01em] truncate">
+                <span className="flex-1 text-left text-[14px] font-medium text-sidebar-foreground tracking-[-0.01em] truncate">
                   {currentOrg.name}
                 </span>
                 {/* Chevron */}
-                <ChevronsUpDown className="w-4 h-4 text-zinc-400 flex-shrink-0" strokeWidth={1.75} />
+                <ChevronsUpDown className="w-4 h-4 text-muted-foreground flex-shrink-0" strokeWidth={1.75} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-[280px]">
@@ -143,14 +142,14 @@ export function Sidebar() {
                   {/* Org Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[14px] font-medium text-zinc-900 tracking-[-0.01em]">
+                      <span className="text-[14px] font-medium text-foreground tracking-[-0.01em]">
                         {org.name}
                       </span>
                       {org.id === currentOrg.id && (
                         <Check className="w-4 h-4 text-emerald-500" strokeWidth={2} />
                       )}
                     </div>
-                    <span className="text-[12px] text-zinc-500 tracking-[-0.01em]">
+                    <span className="text-[12px] text-muted-foreground tracking-[-0.01em]">
                       {org.description}
                     </span>
                   </div>
@@ -208,19 +207,19 @@ function NavButton({
       title={item.label}
       className={cn(
         'w-full flex items-center gap-3 px-3 py-2 rounded-[10px] text-[14px] font-medium tracking-[-0.01em] transition-all',
-        !isActive && 'text-zinc-500 hover:text-zinc-900 hover:bg-[#EFEFF0]',
+        !isActive && 'text-muted-foreground hover:text-sidebar-foreground hover:bg-sidebar-accent',
+        isActive && 'bg-sidebar-accent text-sidebar-foreground',
         isCollapsed && 'justify-center px-2'
       )}
-      style={isActive ? { backgroundColor: '#EFEFF0', color: '#18181B' } : undefined}
     >
       <Icon className={cn(
         'w-[18px] h-[18px] flex-shrink-0',
-        isActive ? 'text-zinc-900' : 'text-zinc-500'
+        isActive ? 'text-sidebar-foreground' : 'text-muted-foreground'
       )} strokeWidth={1.75} />
       <motion.span
         className={cn(
           'whitespace-nowrap overflow-hidden',
-          isActive && 'text-zinc-900'
+          isActive && 'text-sidebar-foreground'
         )}
         animate={{
           opacity: isCollapsed ? 0 : 1,
