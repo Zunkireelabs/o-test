@@ -239,7 +239,7 @@ export default function LoginPage() {
       <style jsx>{`
         .login-page {
           height: 100vh;
-          background: #fafafa;
+          background: var(--background);
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -269,7 +269,7 @@ export default function LoginPage() {
         .login-brand span {
           font-size: 20px;
           font-weight: 600;
-          color: #0a0a0a;
+          color: var(--foreground);
           letter-spacing: -0.02em;
         }
         .login-api-status {
@@ -278,7 +278,7 @@ export default function LoginPage() {
           gap: 8px;
           font-size: 13px;
           font-weight: 450;
-          color: #71717a;
+          color: var(--muted-foreground);
           letter-spacing: -0.01em;
         }
         .status-dot {
@@ -304,7 +304,7 @@ export default function LoginPage() {
         .login-title {
           font-size: 28px;
           font-weight: 600;
-          color: #0a0a0a;
+          color: var(--foreground);
           margin-bottom: 8px;
           text-align: center;
           letter-spacing: -0.025em;
@@ -312,7 +312,7 @@ export default function LoginPage() {
         .login-subtitle {
           font-size: 15px;
           font-weight: 400;
-          color: #71717a;
+          color: var(--muted-foreground);
           margin-bottom: 32px;
           text-align: center;
           letter-spacing: -0.01em;
@@ -331,6 +331,10 @@ export default function LoginPage() {
           margin-bottom: 16px;
           letter-spacing: -0.01em;
         }
+        :global(.dark) .login-error {
+          background: #450a0a;
+          color: #fca5a5;
+        }
         .login-message {
           background: #f0fdf4;
           color: #166534;
@@ -341,6 +345,10 @@ export default function LoginPage() {
           margin-bottom: 16px;
           letter-spacing: -0.01em;
         }
+        :global(.dark) .login-message {
+          background: #052e16;
+          color: #86efac;
+        }
         .oauth-btn {
           width: 100%;
           display: flex;
@@ -348,30 +356,36 @@ export default function LoginPage() {
           justify-content: center;
           gap: 12px;
           padding: 12px 20px;
-          background: white;
-          border: 1px solid #e4e4e7;
+          background: var(--card);
+          border: 1px solid var(--border);
           border-radius: 10px;
           font-size: 14px;
           font-weight: 500;
-          color: #0a0a0a;
+          color: var(--foreground);
           cursor: pointer;
           transition: all 0.15s ease;
           margin-bottom: 10px;
           letter-spacing: -0.01em;
         }
         .oauth-btn:hover:not(:disabled) {
-          background: #fafafa;
-          border-color: #d4d4d8;
+          background: var(--muted);
+          border-color: var(--border);
         }
         .oauth-btn:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
+        .oauth-btn svg {
+          flex-shrink: 0;
+        }
+        :global(.dark) .oauth-btn svg path[fill="#000"] {
+          fill: #fff;
+        }
         .divider {
           display: flex;
           align-items: center;
           margin: 20px 0;
-          color: #a1a1aa;
+          color: var(--muted-foreground);
           font-size: 13px;
           font-weight: 450;
           letter-spacing: -0.01em;
@@ -381,7 +395,7 @@ export default function LoginPage() {
           content: '';
           flex: 1;
           height: 1px;
-          background: #e4e4e7;
+          background: var(--border);
         }
         .divider span {
           padding: 0 16px;
@@ -395,22 +409,23 @@ export default function LoginPage() {
           font-size: 14px;
           font-weight: 400;
           border-radius: 10px;
-          border: 1px solid #e4e4e7;
-          background: white;
+          border: 1px solid var(--border);
+          background: var(--card);
+          color: var(--foreground);
           outline: none;
           transition: border-color 0.15s ease, box-shadow 0.15s ease;
           letter-spacing: -0.01em;
         }
         .form-group input:focus {
-          border-color: #0a0a0a;
-          box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.05);
+          border-color: var(--ring);
+          box-shadow: 0 0 0 3px var(--ring);
         }
         .form-group input::placeholder {
-          color: #a1a1aa;
+          color: var(--muted-foreground);
           font-weight: 400;
         }
         .form-group input:disabled {
-          background: #f4f4f5;
+          background: var(--muted);
           cursor: not-allowed;
         }
         .login-btn {
@@ -419,8 +434,8 @@ export default function LoginPage() {
           font-size: 14px;
           font-weight: 500;
           border-radius: 10px;
-          background: #18181b;
-          color: white;
+          background: var(--primary);
+          color: var(--primary-foreground);
           border: none;
           cursor: pointer;
           transition: all 0.15s ease;
@@ -428,10 +443,10 @@ export default function LoginPage() {
           letter-spacing: -0.01em;
         }
         .login-btn:hover:not(:disabled) {
-          background: #27272a;
+          opacity: 0.9;
         }
         .login-btn:disabled {
-          background: #a1a1aa;
+          opacity: 0.5;
           cursor: not-allowed;
         }
         .auth-toggle {
@@ -439,20 +454,20 @@ export default function LoginPage() {
           margin-top: 20px;
           font-size: 14px;
           font-weight: 400;
-          color: #71717a;
+          color: var(--muted-foreground);
           letter-spacing: -0.01em;
         }
         .auth-toggle button {
           background: none;
           border: none;
-          color: #0a0a0a;
+          color: var(--foreground);
           font-weight: 500;
           cursor: pointer;
           text-decoration: underline;
           text-underline-offset: 2px;
         }
         .auth-toggle button:hover {
-          color: #3f3f46;
+          opacity: 0.8;
         }
         .login-footer {
           flex-shrink: 0;
@@ -470,11 +485,11 @@ export default function LoginPage() {
           letter-spacing: -0.01em;
         }
         .login-footer-brand .from-text {
-          color: #a1a1aa;
+          color: var(--muted-foreground);
           font-weight: 400;
         }
         .login-footer-brand .brand-name {
-          color: #0a0a0a;
+          color: var(--foreground);
           font-weight: 500;
         }
         .login-footer-links {
@@ -483,16 +498,16 @@ export default function LoginPage() {
           gap: 24px;
           font-size: 12px;
           font-weight: 400;
-          color: #71717a;
+          color: var(--muted-foreground);
           letter-spacing: -0.01em;
         }
         .login-footer-links a {
-          color: #71717a;
+          color: var(--muted-foreground);
           text-decoration: none;
           transition: color 0.15s ease;
         }
         .login-footer-links a:hover {
-          color: #3f3f46;
+          color: var(--foreground);
         }
       `}</style>
     </div>
