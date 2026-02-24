@@ -217,6 +217,7 @@ interface ChatRequest {
 }
 
 export async function POST(req: NextRequest) {
+  console.log('[CHAT ROUTE HIT]');
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -375,31 +376,49 @@ async function handleSessionChat(
   // Add current user message
   openaiMessages.push({ role: 'user', content: message });
 
+  // Detect email intent to force emit_event tool
+  const emailIntent = /send|broadcast|email|notify/i.test(message);
+
+  console.log('[OPENAI REQUEST START]', { emailIntent });
+
   // 5. Call OpenAI with full conversation
   const stream = await openai.chat.completions.create({
     model: 'gpt-4o',
     stream: true,
     messages: openaiMessages,
     ...(tools.length > 0 ? { tools } : {}),
+    tool_choice: emailIntent
+      ? { type: 'function', function: { name: 'emit_event' } }
+      : 'auto',
   });
 
   const encoder = new TextEncoder();
   const toolCalls: Array<{ id: string; name: string; arguments: string }> = [];
   let hasToolCall = false;
   let textContent = '';
+  let finishReason: string | null = null;
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
         for await (const chunk of stream) {
+          console.log('STREAM CHUNK:', JSON.stringify(chunk));
           const choice = chunk.choices[0];
           if (!choice) continue;
 
           const delta = choice.delta;
 
+          // Capture finish_reason from final chunk
+          if (choice.finish_reason) {
+            finishReason = choice.finish_reason;
+          }
+
           if (delta.content) {
             textContent += delta.content;
-            controller.enqueue(encoder.encode(delta.content));
+            // Only stream immediately for non-email intents
+            if (!emailIntent) {
+              controller.enqueue(encoder.encode(delta.content));
+            }
           }
 
           if (delta.tool_calls) {
@@ -415,6 +434,18 @@ async function handleSessionChat(
               }
             }
           }
+        }
+
+        // Validate email intent received tool_calls
+        if (emailIntent && finishReason !== 'tool_calls') {
+          console.error('[STREAM ERROR] Forced emit_event but model did not return tool_calls', {
+            finishReason,
+            hasToolCall,
+            textContent: textContent.substring(0, 100),
+          });
+          controller.enqueue(encoder.encode('\n\n[Error: Failed to process email request. Please try again.]'));
+          controller.close();
+          return;
         }
 
         if (!hasToolCall) {
