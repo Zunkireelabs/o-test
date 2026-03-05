@@ -208,13 +208,17 @@ export type Database = {
         Row: {
           chain_depth: number | null
           created_at: string | null
+          error: string | null
           event_type: string
           id: string
           idempotency_key: string
+          max_attempts: number
+          next_retry_at: string | null
           payload: Json
           processed_at: string | null
           processing_started_at: string | null
           project_id: string
+          retry_count: number
           source_agent_id: string | null
           status: string | null
           tenant_id: string
@@ -222,13 +226,17 @@ export type Database = {
         Insert: {
           chain_depth?: number | null
           created_at?: string | null
+          error?: string | null
           event_type: string
           id?: string
           idempotency_key: string
+          max_attempts?: number
+          next_retry_at?: string | null
           payload: Json
           processed_at?: string | null
           processing_started_at?: string | null
           project_id: string
+          retry_count?: number
           source_agent_id?: string | null
           status?: string | null
           tenant_id: string
@@ -236,13 +244,17 @@ export type Database = {
         Update: {
           chain_depth?: number | null
           created_at?: string | null
+          error?: string | null
           event_type?: string
           id?: string
           idempotency_key?: string
+          max_attempts?: number
+          next_retry_at?: string | null
           payload?: Json
           processed_at?: string | null
           processing_started_at?: string | null
           project_id?: string
+          retry_count?: number
           source_agent_id?: string | null
           status?: string | null
           tenant_id?: string
@@ -685,6 +697,9 @@ export type Database = {
     }
     Functions: {
       is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
+      is_tenant_owner: { Args: { p_tenant_id: string }; Returns: boolean }
+      is_tenant_admin: { Args: { p_tenant_id: string }; Returns: boolean }
+      get_user_tenant_role: { Args: { p_tenant_id: string }; Returns: string | null }
     }
     Enums: {
       agent_status: "active" | "inactive" | "error"
@@ -849,3 +864,76 @@ export type Lead = Tables<"leads">
 // Chat types
 export type ChatSession = Tables<"chat_sessions">
 export type ChatMessage = Tables<"chat_messages">
+
+// ============================================
+// Connector Integration Types (Manual)
+// These are defined manually until migration is run
+// and types are regenerated with `supabase gen types`
+// ============================================
+
+export interface ConnectorIntegrationRow {
+  id: string
+  tenant_id: string
+  provider_type: string
+  status: 'connected' | 'disconnected'
+  config: Record<string, unknown> | null
+  is_primary: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ConnectorIntegrationInsert {
+  id?: string
+  tenant_id: string
+  provider_type: string
+  status?: 'connected' | 'disconnected'
+  config?: Record<string, unknown> | null
+  is_primary?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ConnectorIntegrationUpdate {
+  id?: string
+  tenant_id?: string
+  provider_type?: string
+  status?: 'connected' | 'disconnected'
+  config?: Record<string, unknown> | null
+  is_primary?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ConnectorCredentialsRow {
+  id: string
+  integration_id: string
+  encrypted_credentials: string // AES-256-GCM encrypted, base64 encoded
+  scopes: string[] | null
+  expires_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ConnectorCredentialsInsert {
+  id?: string
+  integration_id: string
+  encrypted_credentials: string // AES-256-GCM encrypted, base64 encoded
+  scopes?: string[] | null
+  expires_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ConnectorCredentialsUpdate {
+  id?: string
+  integration_id?: string
+  encrypted_credentials?: string // AES-256-GCM encrypted, base64 encoded
+  scopes?: string[] | null
+  expires_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+// Convenience type aliases
+export type ConnectorIntegration = ConnectorIntegrationRow
+export type ConnectorCredentials = ConnectorCredentialsRow
