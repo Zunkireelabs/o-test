@@ -8,10 +8,6 @@ import { ChatMessages } from '@/components/features/chat-messages';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Link,
-  FileText,
-  Upload,
-  Puzzle,
   Plus,
   Wrench,
   ArrowUp,
@@ -20,28 +16,37 @@ import {
   AudioLines,
   AlertCircle,
 } from 'lucide-react';
+import { ChatSuggestions, DEFAULT_SUGGESTIONS } from '@/components/features/chat-suggestions';
+import type { ChatAction } from '@/types';
 import { motion } from 'framer-motion';
 
-const quickActions = [
-  { id: 'url', label: 'Ingest URL', icon: Link, section: 'ingest' as const, tab: 'url' },
-  { id: 'text', label: 'Add Text', icon: FileText, section: 'ingest' as const, tab: 'text' },
-  { id: 'file', label: 'Upload File', icon: Upload, section: 'ingest' as const, tab: 'file' },
-  { id: 'connect', label: 'Connect App', icon: Puzzle, section: 'connectors' as const },
-];
 
 export function NewTaskSection() {
   const [input, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const voiceTranscriptRef = useRef('');
   const autoSubmitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doSubmitRef = useRef<((text: string) => Promise<void>) | undefined>(undefined);
-  const { setCurrentSection, tenantId, projectId } = useAppStore();
+  const { tenantId, projectId, sidebarCollapsed } = useAppStore();
+
+  // Detect mobile viewport for responsive fixed positioning
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const {
     messages, isStreaming, voiceMode,
     sessionId, isCreatingSession, sessionError,
-    addMessage, appendToLastMessage, setStreaming, setVoiceMode,
-    setSessionId, setCreatingSession, setSessionError,
+    addMessage, appendToLastMessage, updateLastMessageMetadata,
+    addToolCallToLastMessage, updateToolCallInLastMessage,
+    addUIBlockToLastMessage,
+    setStreaming, setVoiceMode,
+    setSessionError,
+    createNewSession, updateSessionTitle,
   } = useChatStore();
   const { speak, stop: stopTTS } = useTTS();
 
@@ -128,53 +133,36 @@ export function NewTaskSection() {
     }
   }, [voiceMode, setVoiceMode, stopTTS, stopListening, startListening]);
 
-  const handleQuickAction = (action: typeof quickActions[0]) => {
-    setCurrentSection(action.section);
-  };
+  // Handle guided prompt suggestion clicks (populate input, don't auto-send)
+  const handleSuggestionSelect = useCallback((suggestion: string) => {
+    setInput(suggestion);
+  }, []);
 
-  // Create a new chat session
-  const createSession = useCallback(async (): Promise<string | null> => {
-    if (!tenantId || !projectId) {
-      setSessionError('Missing tenant or project context');
-      return null;
-    }
+  // Handle action button clicks from assistant messages
+  const handleActionSelect = useCallback((action: ChatAction) => {
+    // Convert action to a natural language message
+    const actionMessages: Record<ChatAction['type'], string> = {
+      assign_lead: 'Assign owner to the lead',
+      move_stage: 'Move the lead to another stage',
+      send_email: 'Send follow-up email',
+      view_pipeline: 'Show my pipeline',
+      create_lead: 'Create a new lead',
+      update_lead: 'Update the lead',
+      custom: action.label,
+    };
 
-    setCreatingSession(true);
-    setSessionError(null);
+    const message = actionMessages[action.type] || action.label;
+    // Auto-submit the action using the ref (avoids circular dependency)
+    doSubmitRef.current?.(message);
+  }, []);
 
-    try {
-      const res = await fetch('/api/chat/sessions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          tenant_id: tenantId,
-          project_id: projectId,
-          title: 'New Session',
-        }),
-      });
+  // Track if this is the first message in a session (for title update)
+  const isFirstMessageRef = useRef(true);
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create session');
-      }
-
-      const data = await res.json();
-      const newSessionId = data.session_id;
-
-      // Persist to localStorage
-      localStorage.setItem(`orca_session_${tenantId}_${projectId}`, newSessionId);
-
-      setSessionId(newSessionId);
-      setCreatingSession(false);
-      return newSessionId;
-    } catch (error) {
-      console.error('Session creation error:', error);
-      setSessionError(error instanceof Error ? error.message : 'Failed to create session');
-      setCreatingSession(false);
-      return null;
-    }
-  }, [tenantId, projectId, setSessionId, setCreatingSession, setSessionError]);
+  // Reset first message flag when sessionId changes
+  useEffect(() => {
+    isFirstMessageRef.current = messages.length === 0;
+  }, [sessionId, messages.length]);
 
   // Core submit logic shared by manual and voice-triggered submission
   const doSubmit = useCallback(async (text: string) => {
@@ -199,12 +187,20 @@ export function NewTaskSection() {
 
     // Get or create session
     let currentSessionId = sessionId;
+    const isNewSession = !currentSessionId;
     if (!currentSessionId) {
-      currentSessionId = await createSession();
+      currentSessionId = await createNewSession(tenantId, projectId);
       if (!currentSessionId) {
         // Session creation failed, error already set
         return;
       }
+    }
+
+    // Update session title on first message (truncate to 50 chars)
+    if (isNewSession || isFirstMessageRef.current) {
+      const title = text.length > 50 ? text.substring(0, 47) + '...' : text;
+      updateSessionTitle(currentSessionId, title);
+      isFirstMessageRef.current = false;
     }
 
     const userMsg = { id: crypto.randomUUID(), role: 'user' as const, content: text };
@@ -238,14 +234,89 @@ export function NewTaskSection() {
       if (!reader) throw new Error('No response stream');
 
       const decoder = new TextDecoder();
+      let buffer = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        if (chunk) {
-          responseText += chunk;
-          appendToLastMessage(chunk);
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events from buffer
+        const events = buffer.split('\n\n');
+        // Keep incomplete event in buffer
+        buffer = events.pop() || '';
+
+        for (const eventBlock of events) {
+          if (!eventBlock.trim()) continue;
+
+          const lines = eventBlock.split('\n');
+          let eventType = '';
+          let eventData = '';
+
+          for (const line of lines) {
+            if (line.startsWith('event: ')) {
+              eventType = line.slice(7);
+            } else if (line.startsWith('data: ')) {
+              eventData = line.slice(6);
+            }
+          }
+
+          if (!eventType || !eventData) continue;
+
+          try {
+            const data = JSON.parse(eventData);
+
+            switch (eventType) {
+              case 'text':
+                if (data.content) {
+                  responseText += data.content;
+                  appendToLastMessage(data.content);
+                }
+                break;
+
+              case 'tool_start':
+                // Add new tool call to message
+                addToolCallToLastMessage({
+                  id: data.id,
+                  name: data.name,
+                  displayName: data.displayName,
+                  status: 'running',
+                });
+                break;
+
+              case 'tool_complete':
+                // Update tool call status
+                updateToolCallInLastMessage(data.id, {
+                  status: data.status,
+                  summary: data.summary,
+                });
+                break;
+
+              case 'ui_block':
+                // Add UI block to message
+                if (data.block) {
+                  addUIBlockToLastMessage(data.block);
+                }
+                break;
+
+              case 'metadata':
+                // Update last message with actions/suggestions
+                updateLastMessageMetadata({
+                  type: data.messageType,
+                  actions: data.actions,
+                  nextSuggestions: data.nextSuggestions,
+                });
+                break;
+
+              case 'done':
+                // Stream complete
+                break;
+            }
+          } catch {
+            // Failed to parse event data, skip
+            console.warn('Failed to parse SSE event:', eventBlock);
+          }
         }
       }
     } catch (error) {
@@ -269,7 +340,7 @@ export function NewTaskSection() {
         startListening();
       }
     }
-  }, [isStreaming, isCreatingSession, isListening, tenantId, projectId, sessionId, createSession, addMessage, appendToLastMessage, setStreaming, stopTTS, speak, startListening, setSessionError]);
+  }, [isStreaming, isCreatingSession, isListening, tenantId, projectId, sessionId, createNewSession, updateSessionTitle, addMessage, appendToLastMessage, updateLastMessageMetadata, addToolCallToLastMessage, updateToolCallInLastMessage, addUIBlockToLastMessage, setStreaming, stopTTS, speak, startListening, setSessionError]);
 
   // Keep ref in sync so startListening's onend can call it without a circular dep
   doSubmitRef.current = doSubmit;
@@ -385,16 +456,22 @@ export function NewTaskSection() {
       <>
         {/* Messages area with bottom padding for fixed input clearance */}
         <div className="pb-[200px]">
-          <ChatMessages />
+          <ChatMessages
+            onSuggestionSelect={handleSuggestionSelect}
+            onActionSelect={handleActionSelect}
+          />
         </div>
 
         {/* Input area fixed at viewport bottom with gradient fade */}
-        <div className="fixed bottom-0 left-[240px] right-0 z-10 pointer-events-none">
+        <div
+          className="fixed bottom-0 right-0 z-10 pointer-events-none transition-[left] duration-200"
+          style={{ left: isMobile ? 0 : (sidebarCollapsed ? 68 : 240) }}
+        >
           {/* Gradient fade - messages appear to fade behind input */}
           <div className="h-16 bg-gradient-to-t from-background to-transparent" />
 
           {/* Input container */}
-          <div className="bg-background px-14 pb-6 pt-2 pointer-events-auto">
+          <div className="bg-background px-4 md:px-14 pb-4 md:pb-6 pt-2 pointer-events-auto">
             <div className="max-w-2xl mx-auto">
               {banners}
               {inputArea}
@@ -420,24 +497,14 @@ export function NewTaskSection() {
         {banners}
         {inputArea}
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap justify-center gap-2 mt-6">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <motion.button
-                key={action.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleQuickAction(action)}
-                className="flex items-center gap-2 px-4 py-2 bg-card border border-border rounded-full text-[12px] font-medium text-muted-foreground hover:border-muted-foreground hover:text-foreground transition-colors tracking-[-0.01em]"
-              >
-                <Icon className="w-4 h-4" />
-                {action.label}
-              </motion.button>
-            );
-          })}
-        </div>
+        {/* Guided Prompts - shown when input is empty */}
+        {!input.trim() && (
+          <ChatSuggestions
+            suggestions={DEFAULT_SUGGESTIONS}
+            onSelect={handleSuggestionSelect}
+            variant="initial"
+          />
+        )}
       </motion.div>
     </div>
   );

@@ -7,10 +7,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabase/client';
-import { Search, Link2, Loader2, Unlink, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Loader2, CheckCircle, XCircle, Plus, MoreHorizontal, Eye, Unlink, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  IntegrationDetailsModal,
+  type IntegrationDetails,
+} from '@/components/features/integration-details-modal';
 import { OAUTH_PROVIDERS, type OAuthProvider } from '@/lib/integrations/providers';
 import { getCredentialKey } from '@/lib/integrations/credential-keys';
 import { ProviderSetupModal } from '@/components/features/provider-setup-modal';
+import { CrmConnectorCard } from '@/components/features/crm-connector-card';
 
 const categories = ['All', 'Productivity', 'Communication', 'Project Management', 'Developer Tools', 'CRM & Sales'];
 
@@ -172,7 +183,7 @@ export function ConnectorsSection() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-foreground tracking-[-0.025em]">Integrations</h1>
         <p className="text-sm text-muted-foreground mt-1.5 tracking-[-0.01em]">
@@ -195,27 +206,50 @@ export function ConnectorsSection() {
       )}
 
       {/* Search and Filter */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search apps..."
-            className="pl-10"
-          />
+      <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+        {/* Search row with Filters and Sort */}
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search apps..."
+              className="pl-10 w-full"
+            />
+          </div>
+          <Button variant="outline" className="gap-2 flex-shrink-0 hidden sm:flex">
+            <SlidersHorizontal className="w-4 h-4" />
+            Filters
+          </Button>
+          <Button variant="outline" size="icon" className="flex-shrink-0 sm:hidden">
+            <SlidersHorizontal className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="flex-shrink-0">
+            <ArrowUpDown className="w-4 h-4" />
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {/* Category chips - horizontal scroll on mobile */}
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:flex-wrap md:overflow-visible">
           {categories.map((cat) => (
             <Button
               key={cat}
               variant={category === cat ? 'default' : 'outline'}
               size="sm"
               onClick={() => setCategory(cat)}
+              className="flex-shrink-0"
             >
               {cat}
             </Button>
           ))}
+        </div>
+      </div>
+
+      {/* CRM Integrations */}
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-foreground mb-4 tracking-[-0.02em]">CRM Integrations</h2>
+        <div className="grid grid-cols-1 gap-4">
+          <CrmConnectorCard />
         </div>
       </div>
 
@@ -229,7 +263,7 @@ export function ConnectorsSection() {
           {connectedProviders.length > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-4 tracking-[-0.02em]">Connected</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {connectedProviders.map((provider) => (
                   <ProviderCard
                     key={provider.providerId}
@@ -248,7 +282,7 @@ export function ConnectorsSection() {
           {availableProviders.length > 0 && (
             <div>
               <h2 className="text-lg font-semibold text-foreground mb-4 tracking-[-0.02em]">Available</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {availableProviders.map((provider) => (
                   <ProviderCard
                     key={provider.providerId}
@@ -298,56 +332,106 @@ function ProviderCard({
   onConnect: () => void;
   onDisconnect: () => void;
 }) {
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+
+  const integrationDetails: IntegrationDetails = {
+    id: provider.providerId,
+    name: provider.displayName,
+    description: provider.description,
+    longDescription: `Connect ${provider.displayName} to Orca to sync your data and automate workflows.`,
+    icon: provider.icon,
+    category: provider.category,
+    connected,
+    connectionInfo: connected ? {
+      status: 'connected',
+    } : undefined,
+  };
+
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
-            {provider.icon.startsWith('http') ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={provider.icon} alt={provider.displayName} className="w-8 h-8" />
-            ) : (
-              <span className="text-2xl">{provider.icon}</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-medium text-foreground tracking-[-0.01em]">{provider.displayName}</h3>
-              {connected && (
-                <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">Connected</Badge>
+    <>
+      <Card className="shadow-none">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            {/* Icon */}
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {provider.icon.startsWith('http') ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={provider.icon} alt={provider.displayName} className="w-7 h-7" />
+              ) : (
+                <span className="text-xl">{provider.icon}</span>
               )}
             </div>
-            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2 tracking-[-0.01em]">{provider.description}</p>
-            <div className="flex items-center gap-2 mt-3">
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-medium text-foreground tracking-[-0.01em]">{provider.displayName}</h3>
+                {connected && (
+                  <Badge className="bg-emerald-100 text-emerald-700 text-xs font-medium">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Connected
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground tracking-[-0.01em] truncate">
+                {provider.description}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
               {connected ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => setShowDetailsModal(true)}>
+                      <Eye className="w-4 h-4 mr-2" />
+                      View details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={onDisconnect}
+                      className="text-red-600 focus:text-red-600"
+                      disabled={loading}
+                    >
+                      <Unlink className="w-4 h-4 mr-2" />
+                      {loading ? 'Disconnecting...' : 'Disconnect'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
                 <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-600 hover:text-red-700"
-                  onClick={onDisconnect}
+                  size="icon"
+                  variant="outline"
+                  className="h-8 w-8"
+                  onClick={onConnect}
                   disabled={loading}
+                  title="Connect"
                 >
                   {loading ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Unlink className="w-3 h-3 mr-1" />
+                    <Plus className="w-4 h-4" />
                   )}
-                  Disconnect
-                </Button>
-              ) : (
-                <Button size="sm" onClick={onConnect} disabled={loading}>
-                  {loading ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Link2 className="w-3 h-3 mr-1" />
-                  )}
-                  Connect
                 </Button>
               )}
             </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Details Modal */}
+      <IntegrationDetailsModal
+        integration={integrationDetails}
+        open={showDetailsModal}
+        onOpenChange={setShowDetailsModal}
+        onConnect={onConnect}
+        onDisconnect={onDisconnect}
+        loading={loading}
+      />
+    </>
   );
 }
