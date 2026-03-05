@@ -5,6 +5,7 @@ dotenv.config({ path: resolve(__dirname, '../.env') })
 
 import { EventProcessor } from './processor'
 import { initializeRegistry } from './registry'
+import { validateEncryptionKeyConfigured } from './security/crypto'
 
 const POLL_INTERVAL_MS = 1000
 
@@ -24,6 +25,16 @@ async function main(): Promise<void> {
 
   console.log('[Worker] Environment loaded')
   console.log(`[Worker] Supabase URL: ${process.env.SUPABASE_URL}`)
+  console.log('')
+
+  // Validate encryption key is configured (fail fast if missing)
+  try {
+    validateEncryptionKeyConfigured()
+  } catch (error) {
+    console.error('[Worker] FATAL: Encryption key validation failed')
+    console.error(error instanceof Error ? error.message : error)
+    process.exit(1)
+  }
   console.log('')
 
   initializeRegistry()

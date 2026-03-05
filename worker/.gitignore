@@ -1,3 +1,5 @@
 node_modules/
 dist/
 .env
+# Smoke test (may contain credentials)
+src/smoke-test.ts
